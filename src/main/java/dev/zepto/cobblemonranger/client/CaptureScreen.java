@@ -11,6 +11,7 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -253,7 +254,12 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
 
         graphics.enableScissor((int) arenaX, (int) arenaY, (int) (arenaX + CaptureGame.WIDTH * scale),
                 (int) (arenaY + CaptureGame.HEIGHT * scale));
+        // Cobblemon draws its name and "Press R to battle" label while the player looks at a Pokémon; hiding the GUI
+        // for this one draw keeps the label out of the arena.
+        boolean hideGui = minecraft.options.hideGui;
+        minecraft.options.hideGui = true;
         InventoryScreen.renderEntityInInventory(graphics, px, py, renderScale, offset, pose, null, pokemonEntity);
+        minecraft.options.hideGui = hideGui;
         graphics.disableScissor();
 
         pokemonEntity.yBodyRot = bodyRot;
@@ -306,10 +312,10 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
             float[] a = line.get(i - 1);
             float[] b = line.get(i);
             float fade = 1 - game.pointAge(a);
-            int glowAlpha = (int) (0x50 * fade);
+            int glowAlpha = (int) (0x90 * fade);
             int coreAlpha = (int) (0x40 + 0xBF * fade);
             shapes.line(sx(a[0]), sy(a[1]), sx(b[0]), sy(b[1]), 5f * scale, (glowAlpha << 24) | (lineColor & 0xFFFFFF));
-            shapes.line(sx(a[0]), sy(a[1]), sx(b[0]), sy(b[1]), 2f * scale, (coreAlpha << 24) | 0xFFFFFF);
+            shapes.line(sx(a[0]), sy(a[1]), sx(b[0]), sy(b[1]), 1.5f * scale, (coreAlpha << 24) | 0xFFFFFF);
         }
         if (!line.isEmpty()) {
             float[] tip = line.get(line.size() - 1);
@@ -355,8 +361,10 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
         graphics.fill(lineX, bottom + 1, lineX + (int) (lineBarWidth * (1 - game.lineUsage())), bottom + 7,
                 0xFF000000 | lineColor);
 
-        graphics.drawCenteredString(font, Component.translatable("screen.cobblemonranger.hint"), width / 2,
-                bottom + 14, 0xFF8090A0);
+        List<FormattedCharSequence> hint = font.split(Component.translatable("screen.cobblemonranger.hint"), width - 16);
+        for (int i = 0; i < Math.min(2, hint.size()); i++) {
+            graphics.drawCenteredString(font, hint.get(i), width / 2, bottom + 14 + i * 10, 0xFF8090A0);
+        }
     }
 
     private void drawBanner(GuiGraphics graphics, float w, float h) {

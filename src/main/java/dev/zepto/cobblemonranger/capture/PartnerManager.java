@@ -16,9 +16,12 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Partner Pokémon are wild Pokémon befriended with a styler. They join the party only so they can fight alongside
@@ -27,6 +30,17 @@ import java.util.List;
 public final class PartnerManager {
     private static final String PARTNER_TAG = CobblemonRanger.MOD_ID + ":partner";
     private static final String BATTLED_TAG = CobblemonRanger.MOD_ID + ":battled";
+    /**
+     * Ticks between recalling a sent-out partner and taking it out of the party. Removing it in the same tick makes
+     * the client fail to apply Cobblemon's recall update, because the Pokémon has already left its party.
+     */
+    private static final int RECALL_TICKS = 10;
+
+    /** Sent-out partners that have been recalled and leave the party once their recall has synced. */
+    private static final List<PendingRelease> RECALLING = new ArrayList<>();
+
+    private record PendingRelease(UUID playerId, Pokemon pokemon, Vec3 pos, long releaseTick) {
+    }
 
     private PartnerManager() {
     }
@@ -48,11 +62,15 @@ public final class PartnerManager {
     public static List<Pokemon> getPartners(ServerPlayer player) {
         List<Pokemon> partners = new ArrayList<>();
         for (Pokemon pokemon : Cobblemon.INSTANCE.getStorage().getParty(player)) {
-            if (pokemon != null && isPartner(pokemon)) {
+            if (pokemon != null && isPartner(pokemon) && !isRecalling(pokemon)) {
                 partners.add(pokemon);
             }
         }
         return partners;
+    }
+
+    private static boolean isRecalling(Pokemon pokemon) {
+        return RECALLING.stream().anyMatch(pending -> pending.pokemon() == pokemon);
     }
 
     private static boolean isInBattle(ServerPlayer player) {
@@ -75,7 +93,9 @@ public final class PartnerManager {
             player.displayClientMessage(Component.translatable("message.cobblemonranger.release_in_battle"), true);
             return false;
         }
-        PlayerPartyStore party = Cobblemon.INSTANCE.getStorage().getParty(player);
+        if (isRecalling(pokemon)) {
+            return false;
+        }
         ServerLevel level = player.serverLevel();
         PokemonEntity sentOut = pokemon.getEntity();
         Vec3 pos = sentOut != null && sentOut.level() == level
@@ -83,13 +103,21 @@ public final class PartnerManager {
                 : player.position().add(player.getLookAngle().multiply(2, 0, 2));
         if (sentOut != null) {
             pokemon.recall();
+            RECALLING.add(new PendingRelease(player.getUUID(), pokemon, pos, level.getGameTime() + RECALL_TICKS));
+            return true;
         }
+        return letLoose(player, pokemon, pos);
+    }
+
+    private static boolean letLoose(ServerPlayer player, Pokemon pokemon, Vec3 pos) {
+        PlayerPartyStore party = Cobblemon.INSTANCE.getStorage().getParty(player);
         if (!party.remove(pokemon)) {
             return false;
         }
         clearPartner(pokemon);
         pokemon.heal();
 
+        ServerLevel level = player.serverLevel();
         PokemonEntity wild = new PokemonEntity(level, pokemon, CobblemonEntities.POKEMON);
         wild.moveTo(pos.x, pos.y, pos.z, player.getYRot() + 180, 0);
         level.addFreshEntity(wild);
@@ -98,6 +126,22 @@ public final class PartnerManager {
         level.playSound(null, wild.blockPosition(), SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.NEUTRAL, 1f, 1.2f);
         player.displayClientMessage(Component.translatable("message.cobblemonranger.released", wild.getName()), false);
         return true;
+    }
+
+    @SubscribeEvent
+    public static void onServerTick(ServerTickEvent.Post event) {
+        Iterator<PendingRelease> it = RECALLING.iterator();
+        while (it.hasNext()) {
+            PendingRelease pending = it.next();
+            ServerPlayer player = event.getServer().getPlayerList().getPlayer(pending.playerId());
+            if (player == null) {
+                // Logged out mid-recall: the partner stays in the party and can be released later.
+                it.remove();
+            } else if (player.serverLevel().getGameTime() >= pending.releaseTick()) {
+                it.remove();
+                letLoose(player, pending.pokemon(), pending.pos());
+            }
+        }
     }
 
     /** Partners are marked when a battle involving their trainer starts, and released once it is over. */

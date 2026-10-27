@@ -1,0 +1,170 @@
+<p><img alt="Capture minigame" src="https://raw.githubusercontent.com/Zepto-Dev/Cobblemon-Ranger/main/curseforge/screenshots/01-capture-minigame.png" /></p>
+<h1>Cobblemon Ranger</h1>
+<p><strong>Cobblemon Ranger</strong> brings the Capture Styler from <em>Pokémon Ranger: Guardian Signs</em> to <a href="https://www.curseforge.com/minecraft/mc-mods/cobblemon">Cobblemon</a>. Instead of throwing a Poké Ball, right-click a wild Pokémon with your styler and draw loops around it until it trusts you. Your new friend fights by your side, helps you get past obstacles, and then heads back home.</p>
+<blockquote>
+<p>Requires <strong>Cobblemon</strong> (1.6.1 or newer) and <strong>Kotlin for Forge</strong> on <strong>NeoForge 1.21.1</strong>. Install it on both the client and the server.</p>
+</blockquote>
+<hr />
+<h2>🎯 The capture minigame</h2>
+<p>Right-click a wild Pokémon with a styler to open the capture screen. Hold left click and draw loops around the Pokémon to fill its friendship gauge. If the Pokémon, or one of its attacks, touches your line, the line breaks and your styler loses energy.</p>
+<ul>
+<li>Attacks depend on the Pokémon's type: charges, projectile bursts, shockwaves and eruptions.</li>
+<li>Rarer, higher-level Pokémon move faster, attack more often and need more loops.</li>
+<li>The arena matches where the Pokémon is standing: meadows, forests, beaches, snow, caves, the Nether and more.</li>
+</ul>
+<p><img alt="Dodging attacks" src="https://raw.githubusercontent.com/Zepto-Dev/Cobblemon-Ranger/main/curseforge/screenshots/03-dodge-attacks.png" /></p>
+<p><img alt="Capture Complete" src="https://raw.githubusercontent.com/Zepto-Dev/Cobblemon-Ranger/main/curseforge/screenshots/04-capture-complete.png" /></p>
+<h2>🤝 Friend Pokémon</h2>
+<p>A captured Pokémon joins your party as a temporary <strong>friend</strong> so it can battle with you. It returns to the wild by itself once your next battle is over. You can also send friends home at any time by sneaking and using the styler in the air, or with <code>/ranger release</code>.</p>
+<h2>✨ Poké Assists</h2>
+<p>During a capture, your friends and your Partner Pokémon appear in a bar under the arena. Click one, or press its number, to call for help. What it does depends on its type:</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Fire, Electric, Ice</td>
+<td>Stuns the target</td>
+</tr>
+<tr>
+<td>Grass, Bug</td>
+<td>Slows it down</td>
+</tr>
+<tr>
+<td>Water</td>
+<td>Washes away its attacks</td>
+</tr>
+<tr>
+<td>Psychic, Ghost, Dark</td>
+<td>Stops it attacking</td>
+</tr>
+<tr>
+<td>Poison, Fairy, Dragon</td>
+<td>Makes your loops stronger</td>
+</tr>
+<tr>
+<td>Flying</td>
+<td>Blows its attacks away</td>
+</tr>
+<tr>
+<td>Everything else</td>
+<td>Gives the friendship gauge a boost</td>
+</tr>
+</tbody>
+</table>
+<p>A friend goes back to the wild after it assists. Your Partner Pokémon can help once per capture and stays with you.</p>
+<p><img alt="Poké Assist" src="https://raw.githubusercontent.com/Zepto-Dev/Cobblemon-Ranger/main/curseforge/screenshots/05-poke-assist.png" /></p>
+<h2>⭐ Partner Pokémon</h2>
+<p>Send out one of your own Pokémon and use the styler on it to make it your <strong>Partner Pokémon</strong>. While it's in your party it follows you around, makes every Poké Assist 50% stronger, helps with field moves without leaving, and gains friendship from your captures.</p>
+<h2>🌲 Field Moves</h2>
+<p>Use the styler on an obstacle and a friend or your partner clears it for you:</p>
+<ul>
+<li><strong>Cut</strong> fells a whole tree or clears leaves, vines and cobwebs (Grass, Bug, Steel or Dark types).</li>
+<li><strong>Rock Smash</strong> breaks a 3×3×3 chunk of stone, cobblestone, sandstone or gravel (Fighting, Rock, Ground or Steel).</li>
+<li><strong>Soak</strong> puts out fires and cools lava into obsidian (Water or Ice).</li>
+<li><strong>Surf</strong> lets you ride across water for two minutes (Water).</li>
+</ul>
+<p>Pokémon that know the move itself can help too. Block protection from other mods is respected.</p>
+<p><img alt="Cut" src="https://raw.githubusercontent.com/Zepto-Dev/Cobblemon-Ranger/main/curseforge/screenshots/09-field-move-cut.png" /></p>
+<p><img alt="Surf" src="https://raw.githubusercontent.com/Zepto-Dev/Cobblemon-Ranger/main/curseforge/screenshots/10-field-move-surf.png" /></p>
+<h2>📜 Ranger missions and ranks</h2>
+<p>Use a styler on a villager to be offered a mission: capture Pokémon (sometimes of a certain type), clear obstacles with field moves, use Poké Assists, battle alongside friends, or bring them items their profession needs. Report back for emeralds, styler XP, Ranger points and sometimes an upgrade module. Each villager has one mission a day.</p>
+<p>Ranger points raise your <strong>Ranger rank</strong> from 1 to 10. Your rank and current mission show at the top left while you hold a styler.</p>
+<p><img alt="Mission offer" src="https://raw.githubusercontent.com/Zepto-Dev/Cobblemon-Ranger/main/curseforge/screenshots/11-mission-offer.png" /></p>
+<h2>🌀 Ranger Signs</h2>
+<p>Press <strong>G</strong> with a styler in your inventory and draw a sign in one stroke to call a legendary Pokémon for help. New signs unlock as your rank goes up:</p>
+<table>
+<thead>
+<tr>
+<th>Sign</th>
+<th>Shape</th>
+<th>Rank</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Celebi</td>
+<td>Circle</td>
+<td>1</td>
+<td>Makes nearby plants grow</td>
+</tr>
+<tr>
+<td>Suicune</td>
+<td>Wave</td>
+<td>2</td>
+<td>Heals you and your party</td>
+</tr>
+<tr>
+<td>Entei</td>
+<td>Triangle</td>
+<td>3</td>
+<td>Burns hostile mobs</td>
+</tr>
+<tr>
+<td>Raikou</td>
+<td>Lightning bolt</td>
+<td>4</td>
+<td>Strikes hostile mobs with lightning</td>
+</tr>
+<tr>
+<td>Latios</td>
+<td>V</td>
+<td>5</td>
+<td>Flies you home</td>
+</tr>
+<tr>
+<td>Groudon</td>
+<td>M</td>
+<td>6</td>
+<td>Clears the weather</td>
+</tr>
+</tbody>
+</table>
+<p>Each sign costs 10 styler energy and has its own cooldown.</p>
+<p><img alt="Ranger Sign" src="https://raw.githubusercontent.com/Zepto-Dev/Cobblemon-Ranger/main/curseforge/screenshots/13-ranger-sign.png" /></p>
+<h2>🎨 Stylers, energy and upgrades</h2>
+<ul>
+<li><strong>16 colours.</strong> Craft a styler from a glass pane, two iron ingots, redstone and a dye (pane on top, iron either side of the redstone, dye underneath). Combine a styler with a dye to recolour it without losing upgrades.</li>
+<li><strong>Styler energy</strong> is shown as durability. It recharges slowly while you carry the styler and can be topped up with redstone at an anvil. Stylers never break.</li>
+<li><strong>Styler levels.</strong> Captures and missions give your styler XP. Each level, up to Lv. 20, adds energy, line length and loop power.</li>
+<li><strong>Upgrade modules</strong> (Energy, Line Length, Loop Power) are found in structure chests: dungeons, mineshafts, temples, strongholds, ancient cities, shipwrecks, trial chambers and more. Apply one at a smithing table with a redstone block, string or amethyst shard.</li>
+</ul>
+<p><img alt="Stylers" src="https://raw.githubusercontent.com/Zepto-Dev/Cobblemon-Ranger/main/curseforge/screenshots/14-stylers.png" /></p>
+<h2>⌨️ Commands</h2>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/ranger friends</code></td>
+<td>Lists your friend Pokémon</td>
+</tr>
+<tr>
+<td><code>/ranger release</code></td>
+<td>Sends your friends home</td>
+</tr>
+<tr>
+<td><code>/ranger partner</code></td>
+<td>Shows your Partner Pokémon (<code>clear</code> removes it)</td>
+</tr>
+<tr>
+<td><code>/ranger mission</code></td>
+<td>Shows your mission (<code>abandon</code> drops it)</td>
+</tr>
+<tr>
+<td><code>/ranger rank</code></td>
+<td>Shows your rank and Ranger Signs</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><em>Cobblemon Ranger is a fan-made add-on and is not affiliated with Nintendo, Game Freak, The Pokémon Company or the Cobblemon team. All art in this mod is original. Source code: <a href="https://github.com/Zepto-Dev/Cobblemon-Ranger">GitHub</a> (MIT licence).</em></p>

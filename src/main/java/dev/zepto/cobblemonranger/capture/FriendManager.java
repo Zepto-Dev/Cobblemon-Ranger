@@ -3,9 +3,9 @@ package dev.zepto.cobblemonranger.capture;
 import com.cobblemon.mod.common.Cobblemon;
 import com.cobblemon.mod.common.CobblemonEntities;
 import com.cobblemon.mod.common.api.storage.party.PlayerPartyStore;
-import com.cobblemon.mod.common.battles.BattleRegistry;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
+import com.cobblemon.mod.common.util.PlayerExtensionsKt;
 import dev.zepto.cobblemonranger.CobblemonRanger;
 import dev.zepto.cobblemonranger.mission.MissionManager;
 import net.minecraft.core.particles.ParticleTypes;
@@ -75,8 +75,9 @@ public final class FriendManager {
         return RECALLING.stream().anyMatch(pending -> pending.pokemon() == pokemon);
     }
 
+    // Not BattleRegistry: its methods became static in Cobblemon 1.7, so the 1.6.1-built call breaks on newer versions.
     private static boolean isInBattle(ServerPlayer player) {
-        return BattleRegistry.INSTANCE.getBattleByParticipatingPlayer(player) != null;
+        return PlayerExtensionsKt.isInBattle(player);
     }
 
     public static int releaseAll(ServerPlayer player) {

@@ -1,0 +1,24 @@
+name: API probe (temporary)
+on: push
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21 }
+      - name: Versions
+        run: |
+          curl -sS https://maven.impactdev.net/repository/development/com/cobblemon/neoforge/maven-metadata.xml | grep -oE '<version>[^<]+' | tail -15
+          curl -sS https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml | grep -oE '<version>21\.1\.[^<]+' | tail -5
+          curl -sS https://thedarkcolour.github.io/KotlinForForge/thedarkcolour/kotlinforforge-neoforge/maven-metadata.xml | grep -oE '<version>5[^<]+' | tail -5
+          curl -sS https://maven.parchmentmc.org/org/parchmentmc/data/parchment-1.21.1/maven-metadata.xml | grep -oE '<version>[^<]+' | tail -3
+      - name: Dump API
+        run: |
+          V=$(curl -sS https://maven.impactdev.net/repository/development/com/cobblemon/neoforge/maven-metadata.xml | grep -oE '<version>1\.6\.1\+1\.21\.1</version>' | head -1 | sed 's/<[^>]*>//g')
+          echo "using $V"
+          curl -sSL -o cob.jar "https://maven.impactdev.net/repository/development/com/cobblemon/neoforge/$V/neoforge-$V.jar"
+          ls -la cob.jar
+          for c in com.cobblemon.mod.common.entity.pokemon.PokemonEntity com.cobblemon.mod.common.pokemon.Pokemon com.cobblemon.mod.common.Cobblemon com.cobblemon.mod.common.battles.BattleRegistry com.cobblemon.mod.common.api.storage.party.PlayerPartyStore com.cobblemon.mod.common.api.storage.party.PartyStore com.cobblemon.mod.common.api.storage.PokemonStoreManager com.cobblemon.mod.common.CobblemonEntities com.cobblemon.mod.common.pokemon.Species com.cobblemon.mod.common.api.types.ElementalType com.cobblemon.mod.common.util.PlayerExtensionsKt; do
+            echo "=================== $c"; javap -cp cob.jar "$c" | grep -vE 'access\$|component[0-9]|lambda' | head -400
+          done
+          unzip -l cob.jar | grep -iE 'util/.*(Player|Pokemon).*Kt.class' | head -20

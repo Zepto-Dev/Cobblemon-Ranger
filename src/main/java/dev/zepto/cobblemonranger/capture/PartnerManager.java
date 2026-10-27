@@ -11,6 +11,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
@@ -124,6 +125,7 @@ public final class PartnerManager {
         }
     }
 
+    // Navigation goes through Mob; see CaptureManager.interact.
     private static void follow(ServerPlayer player, PokemonEntity entity) {
         if (entity.level() != player.level()) {
             return;
@@ -132,9 +134,9 @@ public final class PartnerManager {
         if (distance > TELEPORT_DISTANCE && player.onGround()) {
             Vec3 behind = player.position().add(player.getLookAngle().multiply(-1.5, 0, -1.5));
             entity.teleportTo(behind.x, player.getY(), behind.z);
-            entity.getNavigation().stop();
+            ((Mob) entity).getNavigation().stop();
         } else if (distance > FOLLOW_DISTANCE) {
-            entity.getNavigation().moveTo(player, distance > FOLLOW_DISTANCE * 2 ? 1.6 : 1.1);
+            ((Mob) entity).getNavigation().moveTo(player, distance > FOLLOW_DISTANCE * 2 ? 1.6 : 1.1);
         }
     }
 }

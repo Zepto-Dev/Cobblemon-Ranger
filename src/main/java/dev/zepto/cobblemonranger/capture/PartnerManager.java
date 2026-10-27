@@ -1,9 +1,9 @@
 package dev.zepto.cobblemonranger.capture;
 
 import com.cobblemon.mod.common.Cobblemon;
-import com.cobblemon.mod.common.battles.BattleRegistry;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
+import com.cobblemon.mod.common.util.PlayerExtensionsKt;
 import dev.zepto.cobblemonranger.ranger.RangerManager;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
@@ -105,7 +105,7 @@ public final class PartnerManager {
             return;
         }
         UUID id = player.getUUID();
-        boolean inBattle = BattleRegistry.INSTANCE.getBattleByParticipatingPlayer(player) != null;
+        boolean inBattle = PlayerExtensionsKt.isInBattle(player);
         PokemonEntity entity = partner.getEntity();
         if (entity != null) {
             WAS_OUT.add(id);

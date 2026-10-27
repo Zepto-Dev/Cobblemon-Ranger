@@ -56,7 +56,8 @@ jobs:
         run: ./gradlew build --stacktrace
       - name: Check against newer Cobblemon releases
         run: |
-          for v in 1.7.3 1.8.1 1.8.3; do
+          # The first jar is the one the mod is compiled against (gradle.properties), used as the baseline.
+          for v in 1.6.1 1.7.3 1.8.1 1.8.3; do
             curl -sSfL -o cobblemon-$v.jar "https://maven.impactdev.net/repository/development/com/cobblemon/neoforge/$v%2B1.21.1/neoforge-$v%2B1.21.1.jar"
           done
-          python3 tools/check_cobblemon_compat.py build/libs/cobblemonranger-*.jar cobblemon-*.jar
+          python3 tools/check_cobblemon_compat.py build/libs/cobblemonranger-*.jar cobblemon-1.6.1.jar cobblemon-1.7.3.jar cobblemon-1.8.1.jar cobblemon-1.8.3.jar

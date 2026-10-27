@@ -6,9 +6,11 @@ import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import dev.zepto.cobblemonranger.CobblemonRanger;
 import dev.zepto.cobblemonranger.item.StylerItem;
-import dev.zepto.cobblemonranger.item.StylerStats;
+import dev.zepto.cobblemonranger.mission.MissionManager;
 import dev.zepto.cobblemonranger.network.CaptureResultPayload;
 import dev.zepto.cobblemonranger.network.OpenCapturePayload;
+import dev.zepto.cobblemonranger.network.UseAssistPayload;
+import dev.zepto.cobblemonranger.signs.SignManager;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -26,14 +28,18 @@ import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
  * Server side of a styler capture: starts the minigame when a wild Pokémon is right-clicked with a styler, holds the
- * Pokémon still while the player loops it, and turns it into a partner when the client reports a full gauge.
+ * Pokémon still while the player loops it, and turns it into a friend when the client reports a full gauge.
  */
 public final class CaptureManager {
     /** Marks a Pokémon we froze, so it gets its AI back even if the server stopped mid-capture. */
@@ -42,11 +48,13 @@ public final class CaptureManager {
     private static final int MIN_CAPTURE_TICKS = 40;
     private static final int SESSION_TIMEOUT_TICKS = 20 * 60 * 5;
     private static final double MAX_DISTANCE_SQR = 24 * 24;
+    /** Poké Assists are this much stronger when the player has a Partner Pokémon in their party. */
+    private static final float PARTNER_ASSIST_STRENGTH = 1.5f;
 
     private static final Map<UUID, Session> SESSIONS = new HashMap<>();
 
     private record Session(UUID entityUuid, int entityId, InteractionHand hand, long startTick, ServerLevel level,
-                           boolean wasNoAi) {
+                           boolean wasNoAi, Set<UUID> assistsUsed) {
     }
 
     private CaptureManager() {
@@ -76,13 +84,22 @@ public final class CaptureManager {
 
     private static void interact(ServerPlayer player, PokemonEntity entity, ItemStack styler, InteractionHand hand) {
         Pokemon pokemon = entity.getPokemon();
-        if (PartnerManager.isPartner(pokemon) && player.getUUID().equals(pokemon.getOwnerUUID())) {
+        if (SignManager.isHelper(entity)) {
+            return;
+        }
+        boolean own = player.getUUID().equals(pokemon.getOwnerUUID());
+        if (own && FriendManager.isFriend(pokemon)) {
             if (player.isShiftKeyDown()) {
-                PartnerManager.release(player, pokemon);
+                FriendManager.release(player, pokemon);
             } else {
-                player.displayClientMessage(Component.translatable("message.cobblemonranger.partner_hint",
+                player.displayClientMessage(Component.translatable("message.cobblemonranger.friend_hint",
                         entity.getName()), true);
             }
+            return;
+        }
+        if (own) {
+            // Cobblemon keeps sneak-use on your own Pokémon for itself, so a plain use picks the partner.
+            PartnerManager.setPartner(player, entity);
             return;
         }
         if (!pokemon.isWild()) {
@@ -109,12 +126,22 @@ public final class CaptureManager {
 
         ServerLevel level = player.serverLevel();
         SESSIONS.put(player.getUUID(), new Session(entity.getUUID(), entity.getId(), hand, level.getGameTime(), level,
-                entity.isNoAi()));
+                entity.isNoAi(), new HashSet<>()));
         entity.getNavigation().stop();
         entity.setNoAi(true);
         entity.getPersistentData().putBoolean(FROZEN_TAG, true);
 
         StylerItem stylerItem = (StylerItem) styler.getItem();
+        List<OpenCapturePayload.Assist> assists = new ArrayList<>();
+        Pokemon partner = PartnerManager.getPartner(player);
+        if (partner != null && !partner.isFainted()) {
+            assists.add(assistOf(partner, true));
+        }
+        for (Pokemon friend : FriendManager.getFriends(player)) {
+            if (assists.size() < 6) {
+                assists.add(assistOf(friend, false));
+            }
+        }
         PacketDistributor.sendToPlayer(player, new OpenCapturePayload(
                 entity.getId(),
                 entity.getName(),
@@ -124,8 +151,41 @@ public final class CaptureManager {
                 pokemon.getShiny(),
                 StylerItem.getEnergy(styler),
                 styler.getMaxDamage(),
-                StylerStats.get(styler),
-                stylerItem.getColor().getTextureDiffuseColor()));
+                StylerItem.lineLength(styler),
+                StylerItem.loopPower(styler),
+                stylerItem.getColor().getTextureDiffuseColor(),
+                assists,
+                partner != null ? PARTNER_ASSIST_STRENGTH : 1f));
+    }
+
+    private static OpenCapturePayload.Assist assistOf(Pokemon pokemon, boolean partner) {
+        return new OpenCapturePayload.Assist(pokemon.getUuid(), pokemon.getSpecies().getTranslatedName(),
+                pokemon.getPrimaryType().getName(), partner);
+    }
+
+    /**
+     * A friend lending a Poké Assist goes back to the wild straight away; the Partner Pokémon can help once per
+     * capture and stays.
+     */
+    public static void handleAssist(ServerPlayer player, UseAssistPayload payload) {
+        Session session = SESSIONS.get(player.getUUID());
+        if (session == null || session.entityId() != payload.entityId()
+                || !session.assistsUsed().add(payload.pokemonId())) {
+            return;
+        }
+        Pokemon partner = PartnerManager.getPartner(player);
+        if (partner != null && partner.getUuid().equals(payload.pokemonId())) {
+            MissionManager.onAssist(player);
+            return;
+        }
+        for (Pokemon friend : FriendManager.getFriends(player)) {
+            if (friend.getUuid().equals(payload.pokemonId())) {
+                FriendManager.release(player, friend, null, Component.translatable(
+                        "message.cobblemonranger.assist_used", friend.getSpecies().getTranslatedName()));
+                MissionManager.onAssist(player);
+                return;
+            }
+        }
     }
 
     public static void handleResult(ServerPlayer player, CaptureResultPayload result) {
@@ -152,13 +212,13 @@ public final class CaptureManager {
                 long elapsed = session.level().getGameTime() - session.startTick();
                 if (target instanceof PokemonEntity entity && elapsed >= MIN_CAPTURE_TICKS
                         && StylerItem.getEnergy(styler) > 0) {
-                    capture(player, entity);
+                    capture(player, entity, styler);
                 }
             }
         }
     }
 
-    private static void capture(ServerPlayer player, PokemonEntity entity) {
+    private static void capture(ServerPlayer player, PokemonEntity entity, ItemStack styler) {
         Pokemon pokemon = entity.getPokemon();
         if (!entity.isAlive() || !pokemon.isWild() || entity.isBattling()
                 || entity.level() != player.level() || entity.distanceToSqr(player) > MAX_DISTANCE_SQR) {
@@ -178,15 +238,21 @@ public final class CaptureManager {
         level.playSound(null, entity.blockPosition(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.8f, 1.4f);
         Component name = entity.getName();
 
-        PartnerManager.markPartner(pokemon);
+        FriendManager.markFriend(pokemon);
         entity.discard();
         if (!party.add(pokemon)) {
-            PartnerManager.clearPartner(pokemon);
+            FriendManager.clearFriend(pokemon);
             CobblemonRanger.LOGGER.warn("Could not add captured {} to {}'s party", name.getString(),
                     player.getGameProfile().getName());
             return;
         }
         player.displayClientMessage(Component.translatable("message.cobblemonranger.captured", name), false);
+
+        int catchRate = pokemon.getSpecies().getCatchRate();
+        int xp = 10 + Math.max(0, 255 - catchRate) / 8 + pokemon.getLevel() / 3;
+        StylerItem.addXp(player, styler, xp);
+        PartnerManager.rewardPartner(player, 2);
+        MissionManager.onCapture(player, pokemon);
     }
 
     private static void unfreeze(Entity entity, boolean wasNoAi) {

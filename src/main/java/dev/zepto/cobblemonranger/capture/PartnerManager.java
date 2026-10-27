@@ -1,12 +1,10 @@
 package dev.zepto.cobblemonranger.capture;
 
 import com.cobblemon.mod.common.Cobblemon;
-import com.cobblemon.mod.common.CobblemonEntities;
-import com.cobblemon.mod.common.api.storage.party.PlayerPartyStore;
 import com.cobblemon.mod.common.battles.BattleRegistry;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import dev.zepto.cobblemonranger.CobblemonRanger;
+import dev.zepto.cobblemonranger.ranger.RangerManager;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -15,154 +13,128 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
- * Partner Pokémon are wild Pokémon befriended with a styler. They join the party only so they can fight alongside
- * the player, and go back to the wild when released or once the next battle they were around for is over.
+ * The Partner Pokémon: one of the player's own Pokémon, picked with the styler, that stays with them for good. When it
+ * is sent out it follows the player around, and it powers up Poké Assists and helps with field moves without leaving.
  */
 public final class PartnerManager {
-    private static final String PARTNER_TAG = CobblemonRanger.MOD_ID + ":partner";
-    private static final String BATTLED_TAG = CobblemonRanger.MOD_ID + ":battled";
+    private static final double FOLLOW_DISTANCE = 4;
+    private static final double TELEPORT_DISTANCE = 16;
+
     /**
-     * Ticks between recalling a sent-out partner and taking it out of the party. Removing it in the same tick makes
-     * the client fail to apply Cobblemon's recall update, because the Pokémon has already left its party.
+     * Players whose partner was sent out and is now back in its ball outside of a battle: they recalled it on purpose,
+     * so it is not sent out again until they send it out themselves.
      */
-    private static final int RECALL_TICKS = 10;
-
-    /** Sent-out partners that have been recalled and leave the party once their recall has synced. */
-    private static final List<PendingRelease> RECALLING = new ArrayList<>();
-
-    private record PendingRelease(UUID playerId, Pokemon pokemon, Vec3 pos, long releaseTick) {
-    }
+    private static final Set<UUID> RECALLED = new HashSet<>();
+    private static final Set<UUID> WAS_OUT = new HashSet<>();
 
     private PartnerManager() {
     }
 
-    public static boolean isPartner(Pokemon pokemon) {
-        return pokemon.getPersistentData().getBoolean(PARTNER_TAG);
-    }
-
-    static void markPartner(Pokemon pokemon) {
-        pokemon.getPersistentData().putBoolean(PARTNER_TAG, true);
-        pokemon.getPersistentData().remove(BATTLED_TAG);
-    }
-
-    static void clearPartner(Pokemon pokemon) {
-        pokemon.getPersistentData().remove(PARTNER_TAG);
-        pokemon.getPersistentData().remove(BATTLED_TAG);
-    }
-
-    public static List<Pokemon> getPartners(ServerPlayer player) {
-        List<Pokemon> partners = new ArrayList<>();
+    /** The partner, if it is in the player's party right now. */
+    public static Pokemon getPartner(ServerPlayer player) {
+        Optional<UUID> partnerId = RangerManager.get(player).partner();
+        if (partnerId.isEmpty()) {
+            return null;
+        }
         for (Pokemon pokemon : Cobblemon.INSTANCE.getStorage().getParty(player)) {
-            if (pokemon != null && isPartner(pokemon) && !isRecalling(pokemon)) {
-                partners.add(pokemon);
+            if (pokemon != null && pokemon.getUuid().equals(partnerId.get())) {
+                return pokemon;
             }
         }
-        return partners;
+        return null;
     }
 
-    private static boolean isRecalling(Pokemon pokemon) {
-        return RECALLING.stream().anyMatch(pending -> pending.pokemon() == pokemon);
+    public static boolean isPartner(ServerPlayer player, Pokemon pokemon) {
+        return RangerManager.get(player).partner().map(pokemon.getUuid()::equals).orElse(false);
     }
 
-    private static boolean isInBattle(ServerPlayer player) {
-        return BattleRegistry.INSTANCE.getBattleByParticipatingPlayer(player) != null;
-    }
-
-    public static int releaseAll(ServerPlayer player) {
-        int released = 0;
-        for (Pokemon pokemon : getPartners(player)) {
-            if (release(player, pokemon)) {
-                released++;
-            }
+    public static void setPartner(ServerPlayer player, PokemonEntity entity) {
+        Pokemon pokemon = entity.getPokemon();
+        if (isPartner(player, pokemon)) {
+            player.displayClientMessage(Component.translatable("message.cobblemonranger.partner_already",
+                    entity.getName()), true);
+            return;
         }
-        return released;
-    }
-
-    /** Removes a partner from the party and lets it loose next to where it was (or next to the player). */
-    public static boolean release(ServerPlayer player, Pokemon pokemon) {
-        if (isInBattle(player)) {
-            player.displayClientMessage(Component.translatable("message.cobblemonranger.release_in_battle"), true);
-            return false;
-        }
-        if (isRecalling(pokemon)) {
-            return false;
-        }
+        RangerManager.update(player, data -> data.withPartner(Optional.of(pokemon.getUuid())));
+        WAS_OUT.add(player.getUUID());
+        RECALLED.remove(player.getUUID());
         ServerLevel level = player.serverLevel();
-        PokemonEntity sentOut = pokemon.getEntity();
-        Vec3 pos = sentOut != null && sentOut.level() == level
-                ? sentOut.position()
-                : player.position().add(player.getLookAngle().multiply(2, 0, 2));
-        if (sentOut != null) {
-            pokemon.recall();
-            RECALLING.add(new PendingRelease(player.getUUID(), pokemon, pos, level.getGameTime() + RECALL_TICKS));
-            return true;
-        }
-        return letLoose(player, pokemon, pos);
+        level.sendParticles(ParticleTypes.HEART, entity.getX(), entity.getY() + entity.getBbHeight(), entity.getZ(),
+                10, entity.getBbWidth() / 2, 0.3, entity.getBbWidth() / 2, 0.1);
+        level.playSound(null, entity.blockPosition(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.8f, 1.8f);
+        player.displayClientMessage(Component.translatable("message.cobblemonranger.partner_set", entity.getName()),
+                false);
     }
 
-    private static boolean letLoose(ServerPlayer player, Pokemon pokemon, Vec3 pos) {
-        PlayerPartyStore party = Cobblemon.INSTANCE.getStorage().getParty(player);
-        if (!party.remove(pokemon)) {
-            return false;
-        }
-        clearPartner(pokemon);
-        pokemon.heal();
+    public static void clearPartner(ServerPlayer player) {
+        RangerManager.update(player, data -> data.withPartner(Optional.empty()));
+    }
 
-        ServerLevel level = player.serverLevel();
-        PokemonEntity wild = new PokemonEntity(level, pokemon, CobblemonEntities.POKEMON);
-        wild.moveTo(pos.x, pos.y, pos.z, player.getYRot() + 180, 0);
-        level.addFreshEntity(wild);
-        level.sendParticles(ParticleTypes.HAPPY_VILLAGER, pos.x, pos.y + wild.getBbHeight() / 2, pos.z,
-                10, wild.getBbWidth() / 2, wild.getBbHeight() / 2, wild.getBbWidth() / 2, 0);
-        level.playSound(null, wild.blockPosition(), SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.NEUTRAL, 1f, 1.2f);
-        player.displayClientMessage(Component.translatable("message.cobblemonranger.released", wild.getName()), false);
-        return true;
+    /** Raises the partner's friendship a little; called after captures it was around for. */
+    public static void rewardPartner(ServerPlayer player, int friendship) {
+        Pokemon partner = getPartner(player);
+        if (partner != null) {
+            partner.incrementFriendship(friendship, true);
+        }
     }
 
     @SubscribeEvent
-    public static void onServerTick(ServerTickEvent.Post event) {
-        Iterator<PendingRelease> it = RECALLING.iterator();
-        while (it.hasNext()) {
-            PendingRelease pending = it.next();
-            ServerPlayer player = event.getServer().getPlayerList().getPlayer(pending.playerId());
-            if (player == null) {
-                // Logged out mid-recall: the partner stays in the party and can be released later.
-                it.remove();
-            } else if (player.serverLevel().getGameTime() >= pending.releaseTick()) {
-                it.remove();
-                letLoose(player, pending.pokemon(), pending.pos());
-            }
-        }
+    public static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
+        RECALLED.remove(event.getEntity().getUUID());
+        WAS_OUT.remove(event.getEntity().getUUID());
     }
 
-    /** Partners are marked when a battle involving their trainer starts, and released once it is over. */
     @SubscribeEvent
     public static void onPlayerTick(PlayerTickEvent.Post event) {
-        if (!(event.getEntity() instanceof ServerPlayer player) || player.tickCount % 10 != 0) {
+        if (!(event.getEntity() instanceof ServerPlayer player) || player.tickCount % 10 != 5 || !player.isAlive()
+                || player.isSpectator()) {
             return;
         }
-        List<Pokemon> partners = getPartners(player);
-        if (partners.isEmpty()) {
+        Pokemon partner = getPartner(player);
+        if (partner == null) {
             return;
         }
-        boolean inBattle = isInBattle(player);
-        for (Pokemon pokemon : partners) {
-            if (inBattle) {
-                pokemon.getPersistentData().putBoolean(BATTLED_TAG, true);
-            } else if (pokemon.getPersistentData().getBoolean(BATTLED_TAG)) {
-                player.displayClientMessage(Component.translatable("message.cobblemonranger.battle_over",
-                        pokemon.getSpecies().getTranslatedName()), false);
-                release(player, pokemon);
+        UUID id = player.getUUID();
+        boolean inBattle = BattleRegistry.INSTANCE.getBattleByParticipatingPlayer(player) != null;
+        PokemonEntity entity = partner.getEntity();
+        if (entity != null) {
+            WAS_OUT.add(id);
+            RECALLED.remove(id);
+            if (!inBattle && !entity.isBattling()) {
+                follow(player, entity);
             }
+            return;
+        }
+        if (WAS_OUT.remove(id) && !inBattle) {
+            RECALLED.add(id);
+        }
+        if (!inBattle && !RECALLED.contains(id) && !partner.isFainted() && !CaptureManager.isCapturing(player)
+                && player.tickCount % 40 == 5 && player.onGround()) {
+            Vec3 pos = player.position().add(player.getLookAngle().multiply(-1.5, 0, -1.5));
+            partner.sendOut(player.serverLevel(), pos, null, e -> kotlin.Unit.INSTANCE);
+        }
+    }
+
+    private static void follow(ServerPlayer player, PokemonEntity entity) {
+        if (entity.level() != player.level()) {
+            return;
+        }
+        double distance = entity.distanceTo(player);
+        if (distance > TELEPORT_DISTANCE && player.onGround()) {
+            Vec3 behind = player.position().add(player.getLookAngle().multiply(-1.5, 0, -1.5));
+            entity.teleportTo(behind.x, player.getY(), behind.z);
+            entity.getNavigation().stop();
+        } else if (distance > FOLLOW_DISTANCE) {
+            entity.getNavigation().moveTo(player, distance > FOLLOW_DISTANCE * 2 ? 1.6 : 1.1);
         }
     }
 }

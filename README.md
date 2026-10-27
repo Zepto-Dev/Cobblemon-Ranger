@@ -13,10 +13,37 @@ A NeoForge 1.21.1 add-on for [Cobblemon](https://cobblemon.com) that brings the 
   line, the line breaks and your styler loses energy. Fill the gauge to complete the capture. Attacks depend on
   the Pokémon's primary type (charges, projectile bursts, shockwaves, and eruptions), and rarer, higher-level
   Pokémon are faster, attack more often and need more loops.
-- **Partner Pokémon.** A captured Pokémon joins your party as a temporary partner so it can battle with you. It
-  returns to the wild automatically once your next battle is over. You can release partners at any time by
-  sneaking and using the styler (on the partner, or in the air to release all of them), or with `/ranger release`.
-  `/ranger partners` lists them.
+- **Friend Pokémon.** A captured Pokémon joins your party as a temporary friend so it can battle with you. It
+  returns to the wild automatically once your next battle is over. You can release friends at any time by sneaking
+  and using the styler in the air, or with `/ranger release`. `/ranger friends` lists them.
+- **Poké Assists.** During a capture, every friend (and your Partner Pokémon) shows up in a bar under the arena.
+  Click one or press its number to call for help; the effect depends on its type. Fire, Electric and Ice stun the
+  target, Grass and Bug slow it, Water washes away its attacks, Psychic, Ghost and Dark stop it attacking, Poison,
+  Fairy and Dragon make loops stronger, Flying blows attacks away, and the rest give the friendship gauge a boost.
+  A friend goes back to the wild after assisting; the Partner Pokémon can help once per capture and stays.
+- **Partner Pokémon.** Send out one of your own Pokémon and use the styler on it to make it your Partner Pokémon.
+  While it is in your party it follows you around (and is sent back out after battles and when you log in), makes
+  every Poké Assist 50% stronger, helps with field moves without leaving, and gains friendship from captures.
+  `/ranger partner` shows it and `/ranger partner clear` removes it.
+- **Field Moves.** Use the styler on an obstacle and a friend or your Partner Pokémon clears it: **Cut** fells a whole
+  tree or clears leaves, vines and cobwebs (Grass, Bug, Steel or Dark types); **Rock Smash** breaks a 3x3x3 chunk of
+  stone, cobblestone, sandstone or gravel (Fighting, Rock, Ground or Steel); **Soak** puts out fires and campfires
+  and cools lava into obsidian (Water or Ice); **Surf** on water lets you ride along the surface in the direction
+  you look for two minutes (Water). Pokémon that know the move itself can help too. A friend goes home afterwards;
+  the Partner Pokémon stays but costs a little styler energy. Block protection from other mods is respected.
+- **Styler levels.** Captures and missions give the styler XP. Each level (up to Lv. 20) adds energy, line length
+  and loop power on top of the upgrade modules, and levelling up refills the styler.
+- **Ranger missions and ranks.** Use a styler on a villager to be offered a mission: capture Pokémon (of a certain
+  type), clear obstacles with field moves, use Poké Assists, battle alongside friends, or bring them items their
+  profession needs. Accept it from the chat, then report back to the same villager for emeralds, styler XP, Ranger
+  points and sometimes an upgrade module. Each villager has one mission a day. Ranger points raise your rank (1 to
+  10), shown at the top left while you hold a styler along with your mission. `/ranger mission` and `/ranger rank`
+  show your progress; `/ranger mission abandon` drops a mission.
+- **Ranger Signs.** Press G (rebindable) with a styler in your inventory and draw a sign in one stroke to call a
+  legendary Pokémon. Signs unlock as your rank goes up and cost 10 styler energy: Celebi (circle, rank 1) makes
+  plants grow, Suicune (wave, rank 2) heals you and your party, Entei (triangle, rank 3) burns hostile mobs, Raikou
+  (lightning bolt, rank 4) strikes them with lightning, Latios (V, rank 5) flies you home, and Groudon (M, rank 6)
+  clears the weather. Each has its own cooldown.
 - **Styler energy** is the styler's durability. It recharges slowly while carried and can be topped up with
   redstone at an anvil. Stylers never break; an empty one just can't start a capture.
 - **Upgrade modules** (Energy, Line Length, Loop Power) can be found in structure chests (dungeons, mineshafts,

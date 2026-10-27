@@ -44,7 +44,7 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
         this.pokemonEntity = entity instanceof LivingEntity living ? living : null;
         float sizeHint = pokemonEntity == null ? 1f : Math.max(pokemonEntity.getBbWidth(), pokemonEntity.getBbHeight());
         this.lineColor = brighten(payload.lineColor());
-        this.game = new CaptureGame(payload.type(), payload.catchRate(), payload.level(), payload.energy(),
+        this.game = new CaptureGame(payload.pokemonType(), payload.catchRate(), payload.level(), payload.energy(),
                 payload.maxEnergy(), payload.stats().lineLength(), payload.stats().loopPower(), sizeHint,
                 System.nanoTime(), this);
     }

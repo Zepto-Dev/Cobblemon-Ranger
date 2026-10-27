@@ -9,7 +9,7 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 
 /** Server to client: start the capture minigame against the given wild Pokémon. */
-public record OpenCapturePayload(int entityId, Component name, String type, int catchRate, int level, boolean shiny,
+public record OpenCapturePayload(int entityId, Component name, String pokemonType, int catchRate, int level, boolean shiny,
                                  int energy, int maxEnergy, StylerStats stats, int lineColor) implements CustomPacketPayload {
     public static final Type<OpenCapturePayload> TYPE = new Type<>(CobblemonRanger.id("open_capture"));
 
@@ -19,7 +19,7 @@ public record OpenCapturePayload(int entityId, Component name, String type, int 
     private void write(RegistryFriendlyByteBuf buf) {
         buf.writeVarInt(entityId);
         ComponentSerialization.STREAM_CODEC.encode(buf, name);
-        buf.writeUtf(type);
+        buf.writeUtf(pokemonType);
         buf.writeVarInt(catchRate);
         buf.writeVarInt(level);
         buf.writeBoolean(shiny);

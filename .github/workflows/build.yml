@@ -22,6 +22,19 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Build
         run: ./gradlew build --stacktrace -Pcobblemon_version=${{ matrix.cobblemon }}
+      - name: Server smoke test
+        # Boots a dedicated server with Cobblemon to catch registry, recipe and loot modifier errors.
+        run: |
+          mkdir -p run && echo 'eula=true' > run/eula.txt
+          ./gradlew runServer -Pcobblemon_version=${{ matrix.cobblemon }} > server.log 2>&1 &
+          for i in $(seq 1 120); do
+            grep -q 'Done (' server.log && break
+            if ! kill -0 $! 2>/dev/null; then break; fi
+            sleep 5
+          done
+          pkill -f 'net.neoforged' || true
+          grep -E 'ERROR|Exception|Failed to|Couldn.t' server.log | grep -iE 'cobblemonranger|recipe|loot' && exit 1
+          grep -q 'Done (' server.log || { tail -100 server.log; exit 1; }
       - uses: actions/upload-artifact@v4
         with:
           name: cobblemon-ranger-${{ strategy.job-index }}

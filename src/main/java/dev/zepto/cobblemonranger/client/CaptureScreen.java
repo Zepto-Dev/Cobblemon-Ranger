@@ -5,6 +5,7 @@ import dev.zepto.cobblemonranger.network.CaptureResultPayload;
 import dev.zepto.cobblemonranger.network.OpenCapturePayload;
 import dev.zepto.cobblemonranger.item.StylerItem;
 import net.minecraft.ChatFormatting;
+import dev.zepto.cobblemonranger.network.UseAssistPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -22,6 +23,7 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,6 +39,8 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
 
     // Layout of the styler frame around the arena, in GUI pixels.
     private static final int MARGIN = 6, BEZEL_SIDE = 7, BEZEL_TOP = 12, BEZEL_BOTTOM = 28;
+    /** Extra frame height for the row of assist buttons under the gauges. */
+    private static final int ASSIST_ROW = 18;
 
     private static final int OUTLINE = 0xFF141826;
     private static final int PANEL = 0xE0141C2A;
@@ -58,6 +62,10 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
     private float facing = 180f;
     private float shake;
     private boolean resultSent;
+    private final boolean[] assistUsed;
+    private Component assistBanner = Component.empty();
+    private float assistBannerTime;
+    private int assistColor;
 
     public CaptureScreen(OpenCapturePayload payload) {
         super(Component.translatable("screen.cobblemonranger.capture"));
@@ -73,15 +81,16 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
                 ? new ArenaTheme.Arena(ArenaTheme.MEADOW, 0x8FD95A, 0x8FD95A, 0)
                 : ArenaTheme.detect(minecraft.level, anchor);
         scatterDecorations();
+        this.assistUsed = new boolean[payload.assists().size()];
         this.game = new CaptureGame(payload.pokemonType(), payload.catchRate(), payload.level(), payload.energy(),
-                payload.maxEnergy(), payload.stats().lineLength(), payload.stats().loopPower(), sizeHint,
+                payload.maxEnergy(), payload.lineLength(), payload.loopPower(), sizeHint,
                 System.nanoTime(), this);
     }
 
     @Override
     protected void init() {
         float availableWidth = width - 2 * (MARGIN + BEZEL_SIDE);
-        float availableHeight = height - 2 * MARGIN - BEZEL_TOP - BEZEL_BOTTOM;
+        float availableHeight = height - 2 * MARGIN - BEZEL_TOP - bezelBottom();
         scale = Math.max(0.5f, Math.min(availableWidth / CaptureGame.WIDTH, availableHeight / CaptureGame.HEIGHT));
         arenaX = (width - CaptureGame.WIDTH * scale) / 2;
         arenaY = MARGIN + BEZEL_TOP + (availableHeight - CaptureGame.HEIGHT * scale) / 2;
@@ -113,6 +122,7 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
         lastFrameNanos = now;
         game.tick(dt);
         shake = Math.max(0, shake - dt);
+        assistBannerTime = Math.max(0, assistBannerTime - dt);
 
         if (Math.abs(game.vx) > 4) {
             float target = game.vx > 0 ? 135f : 225f;
@@ -174,7 +184,62 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
     }
 
     @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        int index = keyCode - GLFW.GLFW_KEY_1;
+        if (index >= 0 && index < payload.assists().size()) {
+            useAssist(index);
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    private void useAssist(int index) {
+        if (assistUsed[index] || !game.canUseAssist()) {
+            return;
+        }
+        OpenCapturePayload.Assist assist = payload.assists().get(index);
+        assistUsed[index] = true;
+        CaptureGame.AssistEffect effect = CaptureGame.assistFor(assist.type());
+        assistBanner = Component.translatable("screen.cobblemonranger.assist", assist.name(),
+                Component.translatable("screen.cobblemonranger.assist." + effect.name().toLowerCase(Locale.ROOT)));
+        assistBannerTime = 1.6f;
+        assistColor = typeColor(assist.type());
+        game.useAssist(effect, payload.assistStrength());
+        PacketDistributor.sendToServer(new UseAssistPayload(payload.entityId(), assist.pokemonId()));
+    }
+
+    private int bezelBottom() {
+        return BEZEL_BOTTOM + (payload.assists().isEmpty() ? 0 : ASSIST_ROW);
+    }
+
+    /** Assist buttons sit in a row in the frame under the gauges; returns the index under the mouse or -1. */
+    private int assistAt(double mouseX, double mouseY) {
+        for (int i = 0; i < payload.assists().size(); i++) {
+            int[] box = assistBox(i);
+            if (mouseX >= box[0] && mouseX < box[2] && mouseY >= box[1] && mouseY < box[3]) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private int[] assistBox(int index) {
+        int count = payload.assists().size();
+        float w = CaptureGame.WIDTH * scale;
+        int boxWidth = (int) Math.min(104, (w - (count - 1) * 5) / Math.max(1, count));
+        int total = count * boxWidth + (count - 1) * 5;
+        int x = (int) (arenaX + (w - total) / 2) + index * (boxWidth + 5);
+        int y = (int) (arenaY + CaptureGame.HEIGHT * scale) + BEZEL_BOTTOM - 3;
+        return new int[]{x, y, x + boxWidth, y + 14};
+    }
+
+    @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        int assist = assistAt(mouseX, mouseY);
+        if (button == 0 && assist >= 0) {
+            useAssist(assist);
+            return true;
+        }
         if (button == 0 && insideArena(mouseX, mouseY)) {
             game.beginStroke(toArenaX(mouseX), toArenaY(mouseY));
             return true;
@@ -240,7 +305,7 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
     /** The styler's shell framing the arena, in the styler's own colour. */
     private void drawBezel(GuiGraphics graphics, float w, float h) {
         int x1 = (int) arenaX - BEZEL_SIDE, y1 = (int) arenaY - BEZEL_TOP;
-        int x2 = (int) (arenaX + w) + BEZEL_SIDE, y2 = (int) (arenaY + h) + BEZEL_BOTTOM;
+        int x2 = (int) (arenaX + w) + BEZEL_SIDE, y2 = (int) (arenaY + h) + bezelBottom();
         int body = 0xFF000000 | bezelColor;
         roundedFill(graphics, x1 - 1, y1 - 1, x2 + 1, y2 + 1, 6, OUTLINE);
         roundedFill(graphics, x1, y1, x2, y2, 5, shade(body, 0.62f));
@@ -412,6 +477,12 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
             shapes.ring(px, py, r * 1.2f, 2f, 0xC0FF4040);
             graphics.flush();
         }
+        if (game.isStunned() || game.isSlowed() || game.isCalmed()) {
+            float pulse = 0.5f + 0.5f * (float) Math.sin(System.currentTimeMillis() / 120.0);
+            Shapes shapes = new Shapes(graphics);
+            shapes.ring(px, py, r * (1.3f + 0.1f * pulse), 2f, 0xA0000000 | assistColor);
+            graphics.flush();
+        }
     }
 
     private void drawEffects(GuiGraphics graphics) {
@@ -553,11 +624,29 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
             graphics.drawString(font, typeText, textX + 2, labelTop + 3, 0xFFFFFFFF, true);
         }
 
+        if (!payload.assists().isEmpty()) {
+            drawAssists(graphics);
+        }
+
+        // Effects from assists, as small labels down the right side of the screen.
+        List<Component> statuses = new ArrayList<>();
+        if (game.isStunned()) statuses.add(Component.translatable("screen.cobblemonranger.status.stunned"));
+        if (game.isSlowed()) statuses.add(Component.translatable("screen.cobblemonranger.status.slowed"));
+        if (game.isCalmed()) statuses.add(Component.translatable("screen.cobblemonranger.status.calm"));
+        if (game.isBoosted()) statuses.add(Component.translatable("screen.cobblemonranger.status.boosted"));
+        for (int i = 0; i < statuses.size(); i++) {
+            Component status = statuses.get(i);
+            int statusRight = right - 6, statusTop = (int) arenaY + 48 + i * 14;
+            pill(graphics, statusRight - font.width(status) - 8, statusTop, statusRight, statusTop + 11);
+            graphics.drawString(font, status, statusRight - font.width(status) - 4, statusTop + 2, GOLD, true);
+        }
+
         // Message box near the bottom of the screen: the controls at first, then attack warnings.
         Component message = null;
         if (game.phase() == CaptureGame.Phase.INTRO
                 || (game.phase() == CaptureGame.Phase.PLAYING && game.phaseTime() < HINT_TIME)) {
-            message = Component.translatable("screen.cobblemonranger.hint");
+            message = Component.translatable(payload.assists().isEmpty()
+                    ? "screen.cobblemonranger.hint" : "screen.cobblemonranger.hint_assist");
         } else if (game.phase() == CaptureGame.Phase.PLAYING && game.isWindingUp()) {
             message = Component.translatable("screen.cobblemonranger.charging", payload.name());
         }
@@ -578,6 +667,23 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
 
     /** A swoosh band across the arena with the phase's title, like the games' "Capture On!" cut-in. */
     private void drawBanner(GuiGraphics graphics, float w, float h) {
+        if (assistBannerTime > 0 && game.phase() == CaptureGame.Phase.PLAYING) {
+            float alpha = Math.min(1, assistBannerTime / 0.4f);
+            float bannerScale = Math.min(1.5f, (w - 24) / Math.max(1, font.width(assistBanner)));
+            int bannerWidth = (int) (font.width(assistBanner) * bannerScale);
+            int bannerTop = (int) arenaY + 24;
+            int centre = (int) (arenaX + w / 2);
+            if (alpha > 0.5f) {
+                pill(graphics, centre - bannerWidth / 2 - 6, bannerTop, centre + bannerWidth / 2 + 6,
+                        bannerTop + 6 + (int) (8 * bannerScale));
+            }
+            graphics.pose().pushPose();
+            graphics.pose().translate(centre, bannerTop + 3, 0);
+            graphics.pose().scale(bannerScale, bannerScale, 1);
+            graphics.drawCenteredString(font, assistBanner, 0, 0,
+                    ((int) (alpha * 255) << 24) | (0xFFFFFF & brighten(assistColor)));
+            graphics.pose().popPose();
+        }
         Component text;
         int top, middle, bottom;
         switch (game.phase()) {
@@ -650,6 +756,31 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
         return ItemStack.EMPTY;
     }
 
+    /** Assist buttons: a chip in the helper's type colour with its key number, greyed out once used. */
+    private void drawAssists(GuiGraphics graphics) {
+        for (int i = 0; i < payload.assists().size(); i++) {
+            OpenCapturePayload.Assist assist = payload.assists().get(i);
+            int[] box = assistBox(i);
+            boolean available = !assistUsed[i] && game.canUseAssist();
+            int color = 0xFF000000 | typeColor(assist.type());
+            int body = available ? color : 0xFF3A4252;
+            int edge = assist.partner() ? GOLD : OUTLINE;
+            roundedFill(graphics, box[0] - 1, box[1] - 1, box[2] + 1, box[3] + 1, 3, edge);
+            roundedFill(graphics, box[0], box[1], box[2], box[3], 2, shade(body, 0.6f));
+            roundedFill(graphics, box[0], box[1], box[2], box[3] - 1, 2, body);
+            if (available) {
+                graphics.fill(box[0] + 2, box[1] + 1, box[2] - 2, box[1] + 2, mix(body, 0xFFFFFFFF, 0.4f));
+            }
+            // Key number badge.
+            roundedFill(graphics, box[0] + 2, box[1] + 2, box[0] + 11, box[3] - 2, 1, OUTLINE);
+            graphics.drawString(font, String.valueOf(i + 1), box[0] + 4, box[1] + 3, available ? 0xFFFFFFFF : 0xFF707888,
+                    false);
+            String label = (assist.partner() ? "★" : "") + assist.name().getString();
+            label = font.plainSubstrByWidth(label, box[2] - box[0] - 17);
+            graphics.drawString(font, label, box[0] + 14, box[1] + 3, available ? 0xFFFFFFFF : 0xFF8890A0, available);
+        }
+    }
+
     private static void pill(GuiGraphics graphics, int x1, int y1, int x2, int y2) {
         roundedFill(graphics, x1 - 1, y1 - 1, x2 + 1, y2 + 1, 3, PANEL_EDGE);
         roundedFill(graphics, x1, y1, x2, y2, 3, PANEL);
@@ -699,6 +830,18 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
         playSound(SoundEvents.ITEM_BREAK, 0.8f);
     }
 
+    @Override
+    public void onAssist(CaptureGame.AssistEffect effect) {
+        shake = 0.2f;
+        playSound(switch (effect) {
+            case STUN -> SoundEvents.FIRECHARGE_USE;
+            case SOAK -> SoundEvents.PLAYER_SPLASH_HIGH_SPEED;
+            case GUST -> SoundEvents.BREEZE_WIND_CHARGE_BURST.value();
+            case CRUSH -> SoundEvents.ANVIL_LAND;
+            default -> SoundEvents.ILLUSIONER_CAST_SPELL;
+        }, 1.2f);
+    }
+
     // ------------------------------------------------------------------ helpers
 
     private float sx(float x) {
@@ -713,35 +856,36 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
         Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(sound, pitch));
     }
 
+    /** Colours of the Pokémon types, as on the DS games' type labels. */
+    private static int typeColor(String type) {
+        return switch (type == null ? "" : type.toLowerCase(Locale.ROOT)) {
+            case "fire" -> 0xF08030;
+            case "water" -> 0x6890F0;
+            case "grass" -> 0x78C850;
+            case "electric" -> 0xF8D030;
+            case "ice" -> 0x98D8D8;
+            case "fighting" -> 0xC03028;
+            case "poison" -> 0xA040A0;
+            case "ground" -> 0xE0C068;
+            case "flying" -> 0xA890F0;
+            case "psychic" -> 0xF85888;
+            case "bug" -> 0xA8B820;
+            case "rock" -> 0xB8A038;
+            case "ghost" -> 0x705898;
+            case "dragon" -> 0x7038F8;
+            case "dark" -> 0x705848;
+            case "steel" -> 0xB8B8D0;
+            case "fairy" -> 0xEE99AC;
+            default -> 0xA8A878;
+        };
+    }
+
     private static int attackColor(CaptureGame.AttackStyle style) {
         return switch (style) {
             case DASH -> 0xFFFFFF;
             case BURST -> 0x4FC3F7;
             case SHOCKWAVE -> 0xE040FB;
             case ERUPTION -> 0xFF7A1A;
-        };
-    }
-
-    private static int typeColor(String type) {
-        return switch (type) {
-            case "fire" -> 0xEE8130;
-            case "water" -> 0x6390F0;
-            case "electric" -> 0xE6B800;
-            case "grass" -> 0x6AB83C;
-            case "ice" -> 0x5CC4C0;
-            case "fighting" -> 0xC22E28;
-            case "poison" -> 0xA33EA1;
-            case "ground" -> 0xC9A040;
-            case "flying" -> 0x8F76E8;
-            case "psychic" -> 0xF95587;
-            case "bug" -> 0x94A81A;
-            case "rock" -> 0xB6A136;
-            case "ghost" -> 0x735797;
-            case "dragon" -> 0x6F35FC;
-            case "dark" -> 0x705746;
-            case "steel" -> 0x9090B0;
-            case "fairy" -> 0xD685AD;
-            default -> 0x9A9A78;
         };
     }
 

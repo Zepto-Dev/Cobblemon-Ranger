@@ -29,6 +29,24 @@ public final class CaptureGame {
 
     public enum AttackStyle { DASH, BURST, SHOCKWAVE, ERUPTION }
 
+    /** What a Poké Assist does, decided by the helping Pokémon's primary type. */
+    public enum AssistEffect {
+        /** Burned, paralysed or frozen: the Pokémon stops moving and attacking. */
+        STUN,
+        /** Tangled up in vines or string: the Pokémon moves at a crawl. */
+        SLOW,
+        /** Washes away every attack in the arena and keeps it from attacking for a while. */
+        SOAK,
+        /** Confused or spooked: the Pokémon wanders slowly and forgets to attack. */
+        CALM,
+        /** A strong hit that builds a chunk of the friendship gauge at once. */
+        CRUSH,
+        /** Loops build more friendship and the gauge stops draining. */
+        BOOST,
+        /** Blows attacks away and pushes the Pokémon back to the middle of the arena. */
+        GUST
+    }
+
     public interface Listener {
         default void onLoop(boolean enclosed, int loops) {}
 
@@ -39,6 +57,8 @@ public final class CaptureGame {
         default void onCaptured() {}
 
         default void onFailed() {}
+
+        default void onAssist(AssistEffect effect) {}
     }
 
     public static final class Projectile {
@@ -124,6 +144,7 @@ public final class CaptureGame {
     private int loops;
     private int energy, damageTaken;
     private float invulnerable;
+    private float stunTimer, slowTimer, calmTimer, boostTimer;
     public float hitFlash;
     public final List<Projectile> projectiles = new ArrayList<>();
     public final List<Shockwave> shockwaves = new ArrayList<>();
@@ -147,6 +168,18 @@ public final class CaptureGame {
         this.signatureAttack = attackFor(type);
         this.wanderAngle = random.nextFloat() * (float) (Math.PI * 2);
         this.attackCooldown = nextCooldown() * 0.6f;
+    }
+
+    public static AssistEffect assistFor(String type) {
+        return switch (type == null ? "" : type.toLowerCase()) {
+            case "fire", "electric", "ice" -> AssistEffect.STUN;
+            case "grass", "bug" -> AssistEffect.SLOW;
+            case "water" -> AssistEffect.SOAK;
+            case "psychic", "ghost", "dark" -> AssistEffect.CALM;
+            case "poison", "fairy", "dragon" -> AssistEffect.BOOST;
+            case "flying" -> AssistEffect.GUST;
+            default -> AssistEffect.CRUSH;
+        };
     }
 
     static AttackStyle attackFor(String type) {
@@ -198,6 +231,76 @@ public final class CaptureGame {
 
     public boolean isInvulnerable() {
         return invulnerable > 0;
+    }
+
+    public boolean isStunned() {
+        return stunTimer > 0;
+    }
+
+    public boolean isSlowed() {
+        return slowTimer > 0;
+    }
+
+    public boolean isCalmed() {
+        return calmTimer > 0;
+    }
+
+    public boolean isBoosted() {
+        return boostTimer > 0;
+    }
+
+    public boolean canUseAssist() {
+        return phase == Phase.PLAYING;
+    }
+
+    /**
+     * Applies a Poké Assist. {@code strength} scales durations and amounts; it is higher when the player has a
+     * Partner Pokémon with them.
+     */
+    public void useAssist(AssistEffect effect, float strength) {
+        if (!canUseAssist()) {
+            return;
+        }
+        switch (effect) {
+            case STUN -> {
+                stunTimer = Math.max(stunTimer, 3f * strength);
+                windupTimer = 0;
+                dashTimer = 0;
+            }
+            case SLOW -> slowTimer = Math.max(slowTimer, 8f * strength);
+            case SOAK -> {
+                clearAttacks();
+                calmTimer = Math.max(calmTimer, 4f * strength);
+            }
+            case CALM -> {
+                calmTimer = Math.max(calmTimer, 7f * strength);
+                windupTimer = 0;
+            }
+            case CRUSH -> {
+                // An assist alone never finishes a capture; the last loop is always the player's.
+                gauge = Math.min(0.95f, gauge + 0.2f * strength);
+                sinceLastLoop = 0;
+            }
+            case BOOST -> boostTimer = Math.max(boostTimer, 8f * strength);
+            case GUST -> {
+                clearAttacks();
+                float angle = (float) Math.atan2(HEIGHT / 2 - y, WIDTH / 2 - x);
+                vx = (float) Math.cos(angle) * speed * 3;
+                vy = (float) Math.sin(angle) * speed * 3;
+                dashTimer = 0;
+                windupTimer = 0;
+                slowTimer = Math.max(slowTimer, 4f * strength);
+            }
+        }
+        listener.onAssist(effect);
+    }
+
+    private void clearAttacks() {
+        projectiles.clear();
+        shockwaves.clear();
+        hazards.clear();
+        windupTimer = 0;
+        dashTimer = 0;
     }
 
     /** 0 for a point drawn just now, 1 for one about to fade. */
@@ -290,7 +393,7 @@ public final class CaptureGame {
         flashes.add(new LoopFlash(xs, ys, enclosed));
         if (enclosed) {
             loops++;
-            gauge = Math.min(1f, gauge + gainPerLoop);
+            gauge = Math.min(1f, gauge + gainPerLoop * (boostTimer > 0 ? 1.6f : 1f));
             sinceLastLoop = 0;
             startledTimer = 0.5f;
             paused = false;
@@ -354,8 +457,12 @@ public final class CaptureGame {
         }
 
         invulnerable = Math.max(0, invulnerable - dt);
+        stunTimer = Math.max(0, stunTimer - dt);
+        slowTimer = Math.max(0, slowTimer - dt);
+        calmTimer = Math.max(0, calmTimer - dt);
+        boostTimer = Math.max(0, boostTimer - dt);
         sinceLastLoop += dt;
-        if (sinceLastLoop > GAUGE_DECAY_DELAY) {
+        if (sinceLastLoop > GAUGE_DECAY_DELAY && boostTimer <= 0) {
             gauge = Math.max(0, gauge - GAUGE_DECAY_RATE * dt);
         }
 
@@ -365,7 +472,7 @@ public final class CaptureGame {
     }
 
     private void movePokemon(float dt) {
-        if (windupTimer > 0) {
+        if (windupTimer > 0 || stunTimer > 0) {
             vx *= 0.8f;
             vy *= 0.8f;
         } else if (dashTimer <= 0) {
@@ -376,7 +483,8 @@ public final class CaptureGame {
                 wanderAngle += (random.nextFloat() - 0.5f) * 2.4f;
                 wanderTimer = paused ? 0.4f + random.nextFloat() * 0.5f : 0.8f + random.nextFloat() * 1.6f;
             }
-            float targetSpeed = paused ? 0 : speed * (startledTimer > 0 ? 2.2f : 1f);
+            float targetSpeed = paused ? 0 : speed * (startledTimer > 0 ? 2.2f : 1f)
+                    * (slowTimer > 0 ? 0.35f : 1f) * (calmTimer > 0 ? 0.6f : 1f);
             float tx = (float) Math.cos(wanderAngle) * targetSpeed;
             float ty = (float) Math.sin(wanderAngle) * targetSpeed;
             float blend = Math.min(1, dt * 3);
@@ -413,7 +521,7 @@ public final class CaptureGame {
             if (windupTimer <= 0) {
                 launch(pendingAttack);
             }
-        } else if (dashTimer <= 0) {
+        } else if (dashTimer <= 0 && stunTimer <= 0 && calmTimer <= 0) {
             attackCooldown -= dt;
             if (attackCooldown <= 0) {
                 pendingAttack = random.nextFloat() < 0.25f ? AttackStyle.DASH : signatureAttack;
@@ -506,7 +614,7 @@ public final class CaptureGame {
             return;
         }
         // The Pokémon's own body breaks the line; harder when it is charging.
-        if (distanceToLine(x, y) < radius * 0.7f) {
+        if (stunTimer <= 0 && distanceToLine(x, y) < radius * 0.7f) {
             breakLine(dashTimer > 0 ? 3 + level / 25 : 1 + level / 40);
             return;
         }

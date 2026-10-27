@@ -57,6 +57,11 @@ neoForge {
     }
 }
 
+configurations {
+    localRuntime
+    runtimeClasspath.extendsFrom localRuntime
+}
+
 dependencies {
     // Cobblemon is written in Kotlin; we only need its classes (and the Kotlin stdlib types it exposes) at compile time.
     compileOnly "com.cobblemon:neoforge:${cobblemon_version}"

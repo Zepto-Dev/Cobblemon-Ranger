@@ -1,0 +1,10 @@
+{
+  "type": "cobblemonranger:styler_upgrade",
+  "template": {
+    "item": "cobblemonranger:styler_energy_module"
+  },
+  "addition": {
+    "item": "minecraft:redstone_block"
+  },
+  "stat": "energy"
+}

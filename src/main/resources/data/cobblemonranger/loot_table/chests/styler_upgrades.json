@@ -1,0 +1,31 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "rolls": 1,
+      "conditions": [
+        {
+          "condition": "minecraft:random_chance",
+          "chance": 0.35
+        }
+      ],
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "cobblemonranger:styler_energy_module",
+          "weight": 5
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cobblemonranger:styler_line_module",
+          "weight": 4
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cobblemonranger:styler_power_module",
+          "weight": 2
+        }
+      ]
+    }
+  ]
+}

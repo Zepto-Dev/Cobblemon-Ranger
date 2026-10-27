@@ -20,6 +20,7 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
@@ -127,7 +128,8 @@ public final class CaptureManager {
         ServerLevel level = player.serverLevel();
         SESSIONS.put(player.getUUID(), new Session(entity.getUUID(), entity.getId(), hand, level.getGameTime(), level,
                 entity.isNoAi(), new HashSet<>()));
-        entity.getNavigation().stop();
+        // Through Mob: Cobblemon 1.7 dropped the PokemonNavigation override, so a direct call breaks the 1.6.1-built jar.
+        ((Mob) entity).getNavigation().stop();
         entity.setNoAi(true);
         entity.getPersistentData().putBoolean(FROZEN_TAG, true);
 

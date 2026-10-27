@@ -67,8 +67,9 @@ dependencies {
     compileOnly "com.cobblemon:neoforge:${cobblemon_version}"
     compileOnly "org.jetbrains.kotlin:kotlin-stdlib:${kotlin_version}"
 
-    // Needed to launch the game from the dev environment.
-    localRuntime "com.cobblemon:neoforge:${cobblemon_version}"
+    // Needed to launch the game from the dev environment. -Pcobblemon_runtime_version runs the classes compiled
+    // against cobblemon_version on a different Cobblemon, which is how players run the released jar.
+    localRuntime "com.cobblemon:neoforge:${project.findProperty('cobblemon_runtime_version') ?: cobblemon_version}"
     localRuntime "thedarkcolour:kotlinforforge-neoforge:${kff_version}"
 }
 

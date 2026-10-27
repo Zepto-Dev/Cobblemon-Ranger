@@ -33,6 +33,7 @@ jobs:
             sleep 5
           done
           pkill -f 'net.neoforged' || true
+          grep -iE 'cobblemonranger|ERROR|Done \(' server.log | head -60 || true
           grep -E 'ERROR|Exception|Failed to|Couldn.t' server.log | grep -iE 'cobblemonranger|recipe|loot' && exit 1
           grep -q 'Done (' server.log || { tail -100 server.log; exit 1; }
       - uses: actions/upload-artifact@v4

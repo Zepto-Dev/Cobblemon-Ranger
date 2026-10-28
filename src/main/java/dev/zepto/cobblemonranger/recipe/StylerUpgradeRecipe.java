@@ -17,6 +17,9 @@ import net.minecraft.world.item.crafting.SmithingRecipe;
 import net.minecraft.world.item.crafting.SmithingRecipeInput;
 import net.minecraft.world.level.Level;
 
+import java.util.Arrays;
+import java.util.List;
+
 /**
  * Smithing table recipe: upgrade module (template) + any styler (base) + material (addition) raises one styler stat
  * by a level, keeping the styler's colour, energy and other upgrades.
@@ -32,10 +35,20 @@ public record StylerUpgradeRecipe(Ingredient template, Ingredient addition, Styl
 
     @Override
     public ItemStack assemble(SmithingRecipeInput input, HolderLookup.Provider registries) {
+        return upgrade(input.base());
+    }
+
+    /** The styler this recipe turns {@code base} into. Also used to show the result in JEI and EMI. */
+    public ItemStack upgrade(ItemStack base) {
         // Damage is kept as-is, so an energy upgrade's extra capacity arrives already charged.
-        ItemStack result = input.base().copyWithCount(1);
+        ItemStack result = base.copyWithCount(1);
         StylerItem.setStats(result, StylerStats.get(result).upgraded(stat));
         return result;
+    }
+
+    /** One plain styler of every colour, for recipe viewers to show as the base. */
+    public static List<ItemStack> exampleBases() {
+        return Arrays.stream(DyeColor.values()).map(color -> new ItemStack(ModItems.STYLERS.get(color).get())).toList();
     }
 
     @Override

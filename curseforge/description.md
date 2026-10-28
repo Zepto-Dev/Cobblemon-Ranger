@@ -61,9 +61,11 @@ Pokémon that know the move itself can help too. Block protection from other mod
 
 ![Surf](https://raw.githubusercontent.com/Zepto-Dev/Cobblemon-Ranger/main/curseforge/screenshots/10-field-move-surf.png)
 
-## 📜 Ranger missions and ranks
+## 📜 Ranger HQ, missions and ranks
 
-Use a styler on a villager to be offered a mission: capture Pokémon (sometimes of a certain type), clear obstacles with field moves, use Poké Assists, battle alongside friends, or bring them items their profession needs. Report back for emeralds, styler XP, Ranger points and sometimes an upgrade module. Each villager has one mission a day.
+Missions come from **Rangers**: villagers who work at a **Ranger HQ Terminal**. Craft one, or find a Ranger HQ house in plains, desert, savanna, snowy and taiga villages. Use a styler on a Ranger to be offered a mission: capture Pokémon (sometimes of a certain type), clear obstacles with field moves, use Poké Assists, battle alongside friends, or bring supplies. Report back for emeralds, styler XP, Ranger points and sometimes an upgrade module. You can take one mission per Minecraft day.
+
+Every mission you complete levels the Ranger up from **Novice to Master**, unlocking harder missions with bigger rewards and new trades. Your Ranger rank caps how hard a mission you can take, so there's no skipping ahead.
 
 Ranger points raise your **Ranger rank** from 1 to 10. Your rank and current mission show at the top left while you hold a styler.
 

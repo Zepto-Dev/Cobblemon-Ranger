@@ -23,6 +23,7 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.ENERGY_UPGRADE.get());
                         output.accept(ModItems.LINE_UPGRADE.get());
                         output.accept(ModItems.POWER_UPGRADE.get());
+                        output.accept(ModItems.RANGER_HQ.get());
                     })
                     .build());
 

@@ -2,12 +2,15 @@ package dev.zepto.cobblemonranger.mission;
 
 import com.cobblemon.mod.common.api.types.ElementalType;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import dev.zepto.cobblemonranger.CobblemonRanger;
+import dev.zepto.cobblemonranger.config.RangerConfig;
 import dev.zepto.cobblemonranger.field.FieldMove;
 import dev.zepto.cobblemonranger.item.StylerItem;
 import dev.zepto.cobblemonranger.ranger.RangerData;
 import dev.zepto.cobblemonranger.ranger.RangerManager;
+import dev.zepto.cobblemonranger.hq.RangerHq;
+import dev.zepto.cobblemonranger.registry.ModAttachments;
 import dev.zepto.cobblemonranger.registry.ModItems;
+import dev.zepto.cobblemonranger.registry.ModVillagers;
 import dev.zepto.cobblemonranger.signs.RangerSign;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.particles.ParticleTypes;
@@ -30,6 +33,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -38,18 +42,32 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Ranger missions: use a styler on a villager to be offered a job, do it, then report back to the same villager for
- * emeralds, styler XP and Ranger points. Points raise the player's Ranger rank, which unlocks Ranger Signs.
+ * Ranger missions: use a styler on a Ranger (a villager working at a Ranger HQ terminal) to be offered a job, do it,
+ * then report back to the same Ranger for emeralds, styler XP and Ranger points. Points raise the player's Ranger rank,
+ * which unlocks Ranger Signs. Completed missions also level the Ranger up, and higher level Rangers give harder
+ * missions (tiers 1 to 5) with bigger rewards; the tier is also capped by the player's rank.
  */
 public final class MissionManager {
-    /** Game time after which a villager has a new mission to offer. */
-    private static final String NEXT_MISSION_TAG = CobblemonRanger.MOD_ID + ":next_mission";
-    private static final long VILLAGER_COOLDOWN = 24000;
     private static final long OFFER_TICKS = 20 * 60;
+    public static final int MAX_TIER = 5;
 
     private static final List<String> CAPTURE_TYPES = List.of("normal", "fire", "water", "grass", "electric", "ice",
             "fighting", "poison", "ground", "flying", "psychic", "bug", "rock", "ghost", "dragon", "dark", "steel",
             "fairy");
+
+    /** Reward multiplier, bonus upgrade module chance and per-item delivery effort for each tier. */
+    private static final float[] REWARD_SCALE = {1f, 1.5f, 2.2f, 3f, 4f};
+    private static final float[] MODULE_CHANCE = {0.05f, 0.12f, 0.2f, 0.3f, 0.45f};
+    private static final int[] DELIVERY_EFFORT = {1, 2, 3, 5, 12};
+    private static final int[] DELIVERY_COUNT = {16, 16, 12, 8, 3};
+
+    /** Supplies the HQ asks for, by tier. */
+    private static final List<List<Item>> DELIVERIES = List.of(
+            List.of(Items.BREAD, Items.APPLE, Items.OAK_LOG, Items.TORCH, Items.WHEAT, Items.PAPER),
+            List.of(Items.COAL, Items.LEATHER, Items.BOOK, Items.COOKED_BEEF, Items.STRING, Items.FEATHER),
+            List.of(Items.IRON_INGOT, Items.REDSTONE, Items.LAPIS_LAZULI, Items.HONEY_BOTTLE, Items.SLIME_BALL),
+            List.of(Items.GOLD_INGOT, Items.AMETHYST_SHARD, Items.ENDER_PEARL, Items.BLAZE_ROD, Items.PRISMARINE_SHARD),
+            List.of(Items.DIAMOND, Items.GOLDEN_APPLE, Items.ECHO_SHARD, Items.NAUTILUS_SHELL));
 
     private static final Map<UUID, Offer> OFFERS = new HashMap<>();
 
@@ -74,6 +92,22 @@ public final class MissionManager {
         }
     }
 
+    public static boolean isRanger(Villager villager) {
+        return villager.getVillagerData().getProfession() == ModVillagers.RANGER.get();
+    }
+
+    /**
+     * How hard a mission this Ranger can give this player: the Ranger's level, held back by the player's rank so a
+     * rookie can't take on master missions at someone else's HQ.
+     */
+    public static int tierFor(Villager villager, int rank) {
+        return Math.max(1, Math.min(villager.getVillagerData().getLevel(), maxTierForRank(rank)));
+    }
+
+    public static int maxTierForRank(int rank) {
+        return Math.min(MAX_TIER, 1 + rank / 2);
+    }
+
     private static void talk(ServerPlayer player, Villager villager, ItemStack styler) {
         RangerData data = RangerManager.get(player);
         Optional<Mission> current = data.mission();
@@ -93,14 +127,23 @@ public final class MissionManager {
             return;
         }
 
-        long now = RangerManager.now(player);
-        if (villager.getPersistentData().getLong(NEXT_MISSION_TAG) > now) {
+        if (!isRanger(villager)) {
             villager.playSound(SoundEvents.VILLAGER_NO, 1f, 1f);
-            player.displayClientMessage(Component.translatable("message.cobblemonranger.mission_none",
+            player.displayClientMessage(Component.translatable("message.cobblemonranger.mission_not_ranger",
                     villager.getName()), true);
             return;
         }
-        Mission mission = generate(villager, data.rank(), player.getRandom());
+        long now = RangerManager.now(player);
+        long wait = player.getData(ModAttachments.NEXT_MISSION) - now;
+        if (wait > 0) {
+            // The wait is per player, so going to another HQ doesn't skip it.
+            villager.playSound(SoundEvents.VILLAGER_NO, 1f, 1f);
+            player.sendSystemMessage(Component.translatable("message.cobblemonranger.mission_none",
+                    villager.getName(), (wait + 1199) / 1200).withStyle(ChatFormatting.GRAY));
+            return;
+        }
+        int tier = tierFor(villager, data.rank());
+        Mission mission = generate(villager, tier, player.getRandom());
         OFFERS.put(player.getUUID(), new Offer(mission, now + OFFER_TICKS));
         villager.playSound(SoundEvents.VILLAGER_TRADE, 1f, 1f);
         MutableComponent accept = Component.translatable("message.cobblemonranger.mission_accept")
@@ -113,82 +156,75 @@ public final class MissionManager {
                         .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/ranger mission decline")));
         player.sendSystemMessage(Component.translatable("message.cobblemonranger.mission_offer", villager.getName(),
                 mission.description()));
+        player.sendSystemMessage(Component.translatable("message.cobblemonranger.mission_tier", tierName(tier))
+                .withStyle(ChatFormatting.GOLD));
         player.sendSystemMessage(Component.translatable("message.cobblemonranger.mission_reward", mission.emeralds(),
                 mission.xp(), mission.points()).withStyle(ChatFormatting.GRAY));
+        if (tier < villager.getVillagerData().getLevel()) {
+            player.sendSystemMessage(Component.translatable("message.cobblemonranger.mission_tier_capped",
+                    tierName(villager.getVillagerData().getLevel())).withStyle(ChatFormatting.GRAY));
+        }
         player.sendSystemMessage(Component.empty().append(accept).append("  ").append(decline));
     }
 
-    private static Mission generate(Villager villager, int rank, RandomSource random) {
-        float scale = 1 + (rank - 1) * 0.15f;
-        Mission.Type type = Mission.Type.values()[random.nextInt(Mission.Type.values().length)];
+    public static Component tierName(int tier) {
+        return Component.translatable("merchant.level." + tier);
+    }
+
+    private static Mission generate(Villager villager, int tier, RandomSource random) {
+        List<Mission.Type> types = new ArrayList<>(List.of(Mission.Type.CAPTURE, Mission.Type.FIELD_MOVE,
+                Mission.Type.DELIVER));
+        if (tier >= 2) {
+            types.add(Mission.Type.CAPTURE_TYPE);
+            types.add(Mission.Type.ASSIST);
+        }
+        if (tier >= 3) {
+            types.add(Mission.Type.BATTLE);
+        }
+        Mission.Type type = types.get(random.nextInt(types.size()));
         String target = "";
         int required;
         int effort;
         switch (type) {
             case CAPTURE -> {
-                required = 2 + random.nextInt(2 + rank / 2);
+                required = 1 + tier + random.nextInt(tier + 1);
                 effort = required * 10;
             }
             case CAPTURE_TYPE -> {
                 target = CAPTURE_TYPES.get(random.nextInt(CAPTURE_TYPES.size()));
-                required = 1 + random.nextInt(1 + rank / 3);
+                required = tier / 2 + random.nextInt(tier / 2 + 1);
                 effort = required * 20;
             }
             case FIELD_MOVE -> {
-                FieldMove move = random.nextBoolean() ? FieldMove.CUT : FieldMove.ROCK_SMASH;
-                target = move.id();
-                required = 2 + random.nextInt(3);
+                List<FieldMove> moves = tier >= 3 ? List.of(FieldMove.CUT, FieldMove.ROCK_SMASH, FieldMove.SOAK)
+                        : List.of(FieldMove.CUT, FieldMove.ROCK_SMASH);
+                target = moves.get(random.nextInt(moves.size())).id();
+                required = 1 + tier + random.nextInt(tier + 1);
                 effort = required * 10;
             }
             case ASSIST -> {
-                required = 1 + random.nextInt(2 + rank / 3);
+                required = tier - 1 + random.nextInt(tier);
                 effort = required * 15;
             }
             case BATTLE -> {
-                required = 1 + random.nextInt(2);
+                required = tier / 2 + random.nextInt(2);
                 effort = required * 20;
             }
             default -> {
-                Item item = deliveryFor(villager, random);
+                List<Item> items = DELIVERIES.get(tier - 1);
+                Item item = items.get(random.nextInt(items.size()));
                 target = BuiltInRegistries.ITEM.getKey(item).toString();
-                required = Math.max(1, Math.min(item.getDefaultMaxStackSize(),
-                        (int) ((4 + random.nextInt(12)) * scale)));
-                effort = 15 + required;
+                int most = DELIVERY_COUNT[tier - 1];
+                required = Math.min(item.getDefaultMaxStackSize(), most / 4 + random.nextInt(most - most / 4) + 1);
+                effort = 10 + required * DELIVERY_EFFORT[tier - 1];
             }
         }
+        float scale = REWARD_SCALE[tier - 1];
         int emeralds = Math.max(1, Math.round(effort / 8f * scale));
-        int xp = Math.round(effort * 1.2f);
-        int points = Math.max(5, Math.round(effort * 0.6f));
-        return new Mission(type, target, required, 0, villager.getUUID(), villager.getName(), emeralds, points, xp);
-    }
-
-    /** What a villager wants brought to them, picked from things their profession would use. */
-    private static Item deliveryFor(Villager villager, RandomSource random) {
-        VillagerProfession profession = villager.getVillagerData().getProfession();
-        List<Item> items;
-        if (profession == VillagerProfession.FARMER) {
-            items = List.of(Items.WHEAT, Items.CARROT, Items.POTATO, Items.BEETROOT, Items.PUMPKIN);
-        } else if (profession == VillagerProfession.FISHERMAN) {
-            items = List.of(Items.COD, Items.SALMON, Items.STRING);
-        } else if (profession == VillagerProfession.LIBRARIAN || profession == VillagerProfession.CARTOGRAPHER) {
-            items = List.of(Items.PAPER, Items.BOOK, Items.INK_SAC);
-        } else if (profession == VillagerProfession.ARMORER || profession == VillagerProfession.WEAPONSMITH
-                || profession == VillagerProfession.TOOLSMITH) {
-            items = List.of(Items.COAL, Items.IRON_INGOT, Items.FLINT);
-        } else if (profession == VillagerProfession.BUTCHER || profession == VillagerProfession.LEATHERWORKER) {
-            items = List.of(Items.LEATHER, Items.PORKCHOP, Items.BEEF, Items.CHICKEN);
-        } else if (profession == VillagerProfession.MASON) {
-            items = List.of(Items.CLAY_BALL, Items.STONE, Items.GRANITE);
-        } else if (profession == VillagerProfession.SHEPHERD) {
-            items = List.of(Items.WHITE_WOOL, Items.STRING);
-        } else if (profession == VillagerProfession.FLETCHER) {
-            items = List.of(Items.STICK, Items.FEATHER, Items.FLINT);
-        } else if (profession == VillagerProfession.CLERIC) {
-            items = List.of(Items.ROTTEN_FLESH, Items.BONE, Items.REDSTONE);
-        } else {
-            items = List.of(Items.BREAD, Items.APPLE, Items.OAK_LOG, Items.TORCH);
-        }
-        return items.get(random.nextInt(items.size()));
+        int xp = Math.round(effort * 1.2f * (0.8f + 0.2f * tier));
+        int points = Math.max(5, Math.round(effort * 0.4f * scale));
+        return new Mission(type, target, required, 0, villager.getUUID(), villager.getName(), emeralds, points, xp,
+                tier);
     }
 
     private static boolean tryTurnIn(ServerPlayer player, Villager villager, Mission mission, ItemStack styler) {
@@ -220,8 +256,10 @@ public final class MissionManager {
 
         give(player, new ItemStack(Items.EMERALD, mission.emeralds()));
         RandomSource random = player.getRandom();
-        if (random.nextFloat() < 0.12f + 0.03f * newRank) {
-            Item module = switch (random.nextInt(5)) {
+        int tier = Math.max(1, Math.min(MAX_TIER, mission.tier()));
+        if (random.nextFloat() < MODULE_CHANCE[tier - 1]) {
+            int roll = random.nextInt(5) + (tier >= 4 ? 1 : 0);
+            Item module = switch (roll) {
                 case 0, 1 -> ModItems.ENERGY_UPGRADE.get();
                 case 2, 3 -> ModItems.LINE_UPGRADE.get();
                 default -> ModItems.POWER_UPGRADE.get();
@@ -232,11 +270,16 @@ public final class MissionManager {
         }
         villager.playSound(SoundEvents.VILLAGER_YES, 1f, 1f);
         villager.setUnhappyCounter(0);
+        player.setData(ModAttachments.NEXT_MISSION,
+                RangerManager.now(player) + RangerConfig.missionCooldownTicks());
         player.serverLevel().sendParticles(ParticleTypes.HAPPY_VILLAGER, villager.getX(), villager.getY() + 2,
                 villager.getZ(), 10, 0.4, 0.4, 0.4, 0);
         player.sendSystemMessage(Component.translatable("message.cobblemonranger.mission_complete",
                 villager.getName(), mission.emeralds(), mission.points()).withStyle(ChatFormatting.GREEN));
         StylerItem.addXp(player, styler, mission.xp());
+        if (isRanger(villager)) {
+            RangerHq.addMissionXp(player, villager);
+        }
 
         if (newRank > oldRank) {
             player.serverLevel().playSound(null, player.blockPosition(), SoundEvents.UI_TOAST_CHALLENGE_COMPLETE,
@@ -248,6 +291,10 @@ public final class MissionManager {
                     player.sendSystemMessage(Component.translatable("message.cobblemonranger.sign_unlocked",
                             sign.displayName()).withStyle(ChatFormatting.AQUA));
                 }
+            }
+            if (maxTierForRank(newRank) > maxTierForRank(oldRank)) {
+                player.sendSystemMessage(Component.translatable("message.cobblemonranger.tier_unlocked",
+                        tierName(maxTierForRank(newRank))).withStyle(ChatFormatting.AQUA));
             }
         }
     }
@@ -271,9 +318,6 @@ public final class MissionManager {
             return false;
         }
         Mission mission = offer.mission();
-        if (player.serverLevel().getEntity(mission.giver()) instanceof Villager villager) {
-            villager.getPersistentData().putLong(NEXT_MISSION_TAG, RangerManager.now(player) + VILLAGER_COOLDOWN);
-        }
         RangerManager.update(player, data -> data.withMission(Optional.of(mission)));
         player.sendSystemMessage(Component.translatable("message.cobblemonranger.mission_accepted",
                 mission.description(), mission.giverName()).withStyle(ChatFormatting.GREEN));

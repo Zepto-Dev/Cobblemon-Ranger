@@ -1,0 +1,28 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "rolls": { "type": "minecraft:uniform", "min": 3, "max": 6 },
+      "entries": [
+        { "type": "minecraft:item", "name": "minecraft:bread", "weight": 4,
+          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 1, "max": 4 } }] },
+        { "type": "minecraft:item", "name": "minecraft:redstone", "weight": 4,
+          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 2, "max": 8 } }] },
+        { "type": "minecraft:item", "name": "minecraft:paper", "weight": 3,
+          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 1, "max": 5 } }] },
+        { "type": "minecraft:item", "name": "minecraft:emerald", "weight": 3,
+          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 1, "max": 3 } }] },
+        { "type": "minecraft:item", "name": "minecraft:map", "weight": 1 }
+      ]
+    },
+    {
+      "rolls": 1,
+      "conditions": [{ "condition": "minecraft:random_chance", "chance": 0.4 }],
+      "entries": [
+        { "type": "minecraft:item", "name": "cobblemonranger:styler_energy_module", "weight": 5 },
+        { "type": "minecraft:item", "name": "cobblemonranger:styler_line_module", "weight": 4 },
+        { "type": "minecraft:item", "name": "cobblemonranger:styler_power_module", "weight": 1 }
+      ]
+    }
+  ]
+}

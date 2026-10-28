@@ -1,5 +1,6 @@
 package dev.zepto.cobblemonranger.registry;
 
+import com.mojang.serialization.Codec;
 import dev.zepto.cobblemonranger.CobblemonRanger;
 import dev.zepto.cobblemonranger.ranger.RangerData;
 import net.neoforged.neoforge.attachment.AttachmentType;
@@ -14,6 +15,10 @@ public final class ModAttachments {
 
     public static final Supplier<AttachmentType<RangerData>> RANGER = ATTACHMENTS.register("ranger",
             () -> AttachmentType.builder(() -> RangerData.EMPTY).serialize(RangerData.CODEC).copyOnDeath().build());
+
+    /** Game time after which Rangers offer this player a new mission. */
+    public static final Supplier<AttachmentType<Long>> NEXT_MISSION = ATTACHMENTS.register("next_mission",
+            () -> AttachmentType.builder(() -> 0L).serialize(Codec.LONG).copyOnDeath().build());
 
     private ModAttachments() {
     }

@@ -33,13 +33,20 @@ A NeoForge 1.21.1 add-on for [Cobblemon](https://cobblemon.com) that brings the 
   the Partner Pokémon stays but costs a little styler energy. Block protection from other mods is respected.
 - **Styler levels.** Captures and missions give the styler XP. Each level (up to Lv. 20) adds energy, line length
   and loop power on top of the upgrade modules, and levelling up refills the styler.
-- **Ranger missions and ranks.** Use a styler on a villager to be offered a mission: capture Pokémon (of a certain
-  type), clear obstacles with field moves, use Poké Assists, battle alongside friends, or bring them items their
-  profession needs. Accept it from the chat, then report back to the same villager for emeralds, styler XP, Ranger
-  points and sometimes an upgrade module. Each villager has one mission a day. Ranger points raise your rank (1 to
-  10), shown at the top left while you hold a styler along with your mission. `/ranger mission` and `/ranger rank`
-  show your progress; `/ranger mission abandon` drops a mission. For testing, operators (or single player with
-  cheats) can set a rank with `/ranger setrank <1-10> [players]`.
+- **Ranger HQ and missions.** Missions come from Rangers: villagers who work at a **Ranger HQ Terminal** (crafted
+  from three glass panes, four iron ingots, redstone and an emerald, or found in the Ranger HQ houses that spawn in
+  plains, desert, savanna, snowy and taiga villages). Use a styler on a Ranger to be offered a mission: capture
+  Pokémon (of a certain type), clear obstacles with field moves, use Poké Assists, battle alongside friends, or bring
+  supplies. Accept it from the chat, then report back to the same Ranger for emeralds, styler XP, Ranger points and
+  sometimes an upgrade module. After handing one in you wait a Minecraft day (20 minutes, `missionCooldownMinutes`
+  in the server config) before any Ranger offers you another.
+  Completed missions level the Ranger up (Novice to Master; 2, 4, 4 and 4 missions per level), and each level unlocks
+  harder missions with bigger rewards and new trades (redstone, a styler, then the upgrade modules). The mission
+  level is also capped by your rank: rank 1 gets Novice missions, rank 2 Apprentice, rank 4 Journeyman, rank 6
+  Expert and rank 8 Master. Ranger points raise your rank (1 to 10), shown at the top left while you hold a styler
+  along with your mission. `/ranger mission` and `/ranger rank` show your progress; `/ranger mission abandon` drops a
+  mission. For testing, operators (or single player with cheats) can set a rank with
+  `/ranger setrank <1-10> [players]`.
 - **Ranger Signs.** Press G (rebindable) with a styler in your inventory and draw a sign in one stroke to call a
   legendary Pokémon. Signs unlock as your rank goes up and cost 10 styler energy: Celebi (circle, rank 1) makes
   plants grow, Suicune (wave, rank 2) heals you and your party, Entei (triangle, rank 3) burns hostile mobs, Raikou

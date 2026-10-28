@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "GGG",
+    "IRI",
+    "IEI"
+  ],
+  "key": {
+    "G": { "item": "minecraft:glass_pane" },
+    "I": { "item": "minecraft:iron_ingot" },
+    "R": { "item": "minecraft:redstone" },
+    "E": { "item": "minecraft:emerald" }
+  },
+  "result": {
+    "id": "cobblemonranger:ranger_hq",
+    "count": 1
+  }
+}

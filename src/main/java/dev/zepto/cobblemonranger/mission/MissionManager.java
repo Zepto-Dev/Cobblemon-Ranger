@@ -2,12 +2,13 @@ package dev.zepto.cobblemonranger.mission;
 
 import com.cobblemon.mod.common.api.types.ElementalType;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import dev.zepto.cobblemonranger.CobblemonRanger;
+import dev.zepto.cobblemonranger.config.RangerConfig;
 import dev.zepto.cobblemonranger.field.FieldMove;
 import dev.zepto.cobblemonranger.item.StylerItem;
 import dev.zepto.cobblemonranger.ranger.RangerData;
 import dev.zepto.cobblemonranger.ranger.RangerManager;
 import dev.zepto.cobblemonranger.hq.RangerHq;
+import dev.zepto.cobblemonranger.registry.ModAttachments;
 import dev.zepto.cobblemonranger.registry.ModItems;
 import dev.zepto.cobblemonranger.registry.ModVillagers;
 import dev.zepto.cobblemonranger.signs.RangerSign;
@@ -47,10 +48,6 @@ import java.util.UUID;
  * missions (tiers 1 to 5) with bigger rewards; the tier is also capped by the player's rank.
  */
 public final class MissionManager {
-    /** Game time after which a Ranger has a new mission to offer. */
-    private static final String NEXT_MISSION_TAG = CobblemonRanger.MOD_ID + ":next_mission";
-    /** A short break after a mission is handed in, so the HQ isn't an instant mission vending machine. */
-    private static final long VILLAGER_COOLDOWN = 20 * 60 * 2;
     private static final long OFFER_TICKS = 20 * 60;
     public static final int MAX_TIER = 5;
 
@@ -137,10 +134,12 @@ public final class MissionManager {
             return;
         }
         long now = RangerManager.now(player);
-        if (villager.getPersistentData().getLong(NEXT_MISSION_TAG) > now) {
+        long wait = player.getData(ModAttachments.NEXT_MISSION) - now;
+        if (wait > 0) {
+            // The wait is per player, so going to another HQ doesn't skip it.
             villager.playSound(SoundEvents.VILLAGER_NO, 1f, 1f);
-            player.displayClientMessage(Component.translatable("message.cobblemonranger.mission_none",
-                    villager.getName()), true);
+            player.sendSystemMessage(Component.translatable("message.cobblemonranger.mission_none",
+                    villager.getName(), (wait + 1199) / 1200).withStyle(ChatFormatting.GRAY));
             return;
         }
         int tier = tierFor(villager, data.rank());
@@ -271,7 +270,8 @@ public final class MissionManager {
         }
         villager.playSound(SoundEvents.VILLAGER_YES, 1f, 1f);
         villager.setUnhappyCounter(0);
-        villager.getPersistentData().putLong(NEXT_MISSION_TAG, RangerManager.now(player) + VILLAGER_COOLDOWN);
+        player.setData(ModAttachments.NEXT_MISSION,
+                RangerManager.now(player) + RangerConfig.missionCooldownTicks());
         player.serverLevel().sendParticles(ParticleTypes.HAPPY_VILLAGER, villager.getX(), villager.getY() + 2,
                 villager.getZ(), 10, 0.4, 0.4, 0.4, 0);
         player.sendSystemMessage(Component.translatable("message.cobblemonranger.mission_complete",

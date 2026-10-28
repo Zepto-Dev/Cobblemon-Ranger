@@ -145,7 +145,7 @@
   "message.cobblemonranger.mission_already": "You already have a mission. Finish or abandon it first.",
   "message.cobblemonranger.mission_busy": "You're already on a mission for %s: %s. Use /ranger mission abandon to drop it.",
   "message.cobblemonranger.mission_reminder": "%s: \"How's it going? %s\"",
-  "message.cobblemonranger.mission_none": "%s has no new missions yet. Come back in a little while.",
+  "message.cobblemonranger.mission_none": "%s: \"No new missions for you yet, Ranger. Come back in about %s minutes.\"",
   "message.cobblemonranger.mission_done": "Mission complete! Report back to %s for your reward.",
   "message.cobblemonranger.mission_complete": "%s thanks you! You got %s emeralds and %s Ranger points.",
   "message.cobblemonranger.mission_bonus": "They also gave you a %s!",

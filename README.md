@@ -38,7 +38,8 @@ A NeoForge 1.21.1 add-on for [Cobblemon](https://cobblemon.com) that brings the 
   plains, desert, savanna, snowy and taiga villages). Use a styler on a Ranger to be offered a mission: capture
   Pokémon (of a certain type), clear obstacles with field moves, use Poké Assists, battle alongside friends, or bring
   supplies. Accept it from the chat, then report back to the same Ranger for emeralds, styler XP, Ranger points and
-  sometimes an upgrade module. A Ranger has a new mission a couple of minutes after the last one is handed in.
+  sometimes an upgrade module. After handing one in you wait a Minecraft day (20 minutes, `missionCooldownMinutes`
+  in the server config) before any Ranger offers you another.
   Completed missions level the Ranger up (Novice to Master; 2, 4, 4 and 4 missions per level), and each level unlocks
   harder missions with bigger rewards and new trades (redstone, a styler, then the upgrade modules). The mission
   level is also capped by your rank: rank 1 gets Novice missions, rank 2 Apprentice, rank 4 Journeyman, rank 6

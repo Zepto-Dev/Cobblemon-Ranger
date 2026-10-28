@@ -63,7 +63,7 @@ Pokémon that know the move itself can help too. Block protection from other mod
 
 ## 📜 Ranger HQ, missions and ranks
 
-Missions come from **Rangers**: villagers who work at a **Ranger HQ Terminal**. Craft one, or find a Ranger HQ house in plains, desert, savanna, snowy and taiga villages. Use a styler on a Ranger to be offered a mission: capture Pokémon (sometimes of a certain type), clear obstacles with field moves, use Poké Assists, battle alongside friends, or bring supplies. Report back for emeralds, styler XP, Ranger points and sometimes an upgrade module.
+Missions come from **Rangers**: villagers who work at a **Ranger HQ Terminal**. Craft one, or find a Ranger HQ house in plains, desert, savanna, snowy and taiga villages. Use a styler on a Ranger to be offered a mission: capture Pokémon (sometimes of a certain type), clear obstacles with field moves, use Poké Assists, battle alongside friends, or bring supplies. Report back for emeralds, styler XP, Ranger points and sometimes an upgrade module. You can take one mission per Minecraft day.
 
 Every mission you complete levels the Ranger up from **Novice to Master**, unlocking harder missions with bigger rewards and new trades. Your Ranger rank caps how hard a mission you can take, so there's no skipping ahead.
 

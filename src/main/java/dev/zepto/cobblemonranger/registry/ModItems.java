@@ -4,6 +4,7 @@ import dev.zepto.cobblemonranger.CobblemonRanger;
 import dev.zepto.cobblemonranger.item.StylerItem;
 import dev.zepto.cobblemonranger.item.StylerStats;
 import dev.zepto.cobblemonranger.item.StylerUpgradeItem;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Rarity;
@@ -31,6 +32,8 @@ public final class ModItems {
             () -> new StylerUpgradeItem(StylerStats.Stat.LINE, new Item.Properties().rarity(Rarity.UNCOMMON)));
     public static final DeferredItem<StylerUpgradeItem> POWER_UPGRADE = ITEMS.register("styler_power_module",
             () -> new StylerUpgradeItem(StylerStats.Stat.POWER, new Item.Properties().rarity(Rarity.RARE)));
+
+    public static final DeferredItem<BlockItem> RANGER_HQ = ITEMS.registerSimpleBlockItem(ModBlocks.RANGER_HQ);
 
     private ModItems() {
     }

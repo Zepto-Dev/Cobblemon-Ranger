@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/orientable_with_bottom",
+  "textures": {
+    "front": "cobblemonranger:block/ranger_hq_front",
+    "side": "cobblemonranger:block/ranger_hq_side",
+    "top": "cobblemonranger:block/ranger_hq_top",
+    "bottom": "cobblemonranger:block/ranger_hq_bottom"
+  }
+}

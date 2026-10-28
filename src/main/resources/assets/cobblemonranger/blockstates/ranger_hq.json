@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "cobblemonranger:block/ranger_hq" },
+    "facing=east": { "model": "cobblemonranger:block/ranger_hq", "y": 90 },
+    "facing=south": { "model": "cobblemonranger:block/ranger_hq", "y": 180 },
+    "facing=west": { "model": "cobblemonranger:block/ranger_hq", "y": 270 }
+  }
+}

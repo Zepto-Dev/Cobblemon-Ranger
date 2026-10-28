@@ -1,6 +1,7 @@
 package dev.zepto.cobblemonranger.capture;
 
 import com.cobblemon.mod.common.pokemon.Pokemon;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.zepto.cobblemonranger.mission.MissionManager;
@@ -9,15 +10,18 @@ import dev.zepto.cobblemonranger.ranger.RangerManager;
 import dev.zepto.cobblemonranger.signs.RangerSign;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
+import java.util.Collection;
 import java.util.List;
 
 /**
  * {@code /ranger friends} lists friend Pokémon and {@code /ranger release} sends them all home; {@code /ranger partner},
- * {@code /ranger mission} and {@code /ranger rank} show the Partner Pokémon, the current mission and Ranger rank.
+ * {@code /ranger mission} and {@code /ranger rank} show the Partner Pokémon, the current mission and Ranger rank, and
+ * {@code /ranger setrank <rank> [targets]} (operators only) sets a Ranger rank for testing.
  */
 public final class RangerCommands {
     private RangerCommands() {
@@ -31,6 +35,12 @@ public final class RangerCommands {
                 .then(Commands.literal("partner").executes(RangerCommands::showPartner)
                         .then(Commands.literal("clear").executes(RangerCommands::clearPartner)))
                 .then(Commands.literal("rank").executes(RangerCommands::showRank))
+                // For testing: needs cheats in single player or operator permission on a server.
+                .then(Commands.literal("setrank").requires(source -> source.hasPermission(2))
+                        .then(Commands.argument("rank", IntegerArgumentType.integer(1, RangerData.MAX_RANK))
+                                .executes(c -> setRank(c, List.of(player(c))))
+                                .then(Commands.argument("targets", EntityArgument.players())
+                                        .executes(c -> setRank(c, EntityArgument.getPlayers(c, "targets"))))))
                 .then(Commands.literal("mission").executes(RangerCommands::showMission)
                         .then(Commands.literal("accept").executes(c -> MissionManager.accept(player(c)) ? 1 : 0))
                         .then(Commands.literal("decline").executes(c -> {
@@ -100,6 +110,17 @@ public final class RangerCommands {
                     sign.displayName(), sign.description(), sign.rank()));
         }
         return rank;
+    }
+
+    private static int setRank(CommandContext<CommandSourceStack> context, Collection<ServerPlayer> targets) {
+        int rank = IntegerArgumentType.getInteger(context, "rank");
+        int points = RangerData.pointsForRank(rank);
+        for (ServerPlayer target : targets) {
+            RangerManager.update(target, data -> data.withPoints(points));
+            context.getSource().sendSuccess(() -> Component.translatable("message.cobblemonranger.rank_set",
+                    target.getDisplayName(), rank, RangerManager.rankTitle(rank)), true);
+        }
+        return targets.size();
     }
 
     private static int showMission(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {

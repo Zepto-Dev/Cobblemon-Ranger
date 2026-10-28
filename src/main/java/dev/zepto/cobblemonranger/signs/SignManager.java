@@ -47,7 +47,10 @@ import java.util.List;
  * next to them for a few seconds while its power takes effect.
  */
 public final class SignManager {
-    /** Marks a summoned legendary, so it can't be captured and is removed even if the server stops while it's out. */
+    /**
+     * Marks a summoned legendary, so the styler ignores it and it is removed even if the server stops while it's out.
+     * It is also uncatchable and unbattleable through Cobblemon's own flags.
+     */
     public static final String HELPER_TAG = CobblemonRanger.MOD_ID + ":sign_helper";
     private static final int HELPER_TICKS = 20 * 5;
     private static final int EFFECT_DELAY = 25;
@@ -130,11 +133,13 @@ public final class SignManager {
         Vec3 look = player.getLookAngle().multiply(1, 0, 1).normalize();
         Vec3 pos = player.position().add(look.scale(3));
         try {
-            Pokemon pokemon = PokemonProperties.Companion.parse(sign.species() + " level=70").create();
+            // A one-off copy that only appears for the sign: no Poké Ball or battle can take it.
+            Pokemon pokemon = PokemonProperties.Companion.parse(sign.species() + " level=70 uncatchable").create();
             PokemonEntity entity = new PokemonEntity(level, pokemon, CobblemonEntities.POKEMON);
             entity.moveTo(pos.x, pos.y, pos.z, player.getYRot() + 180, 0);
             entity.setNoAi(true);
             entity.setInvulnerable(true);
+            entity.getEntityData().set(PokemonEntity.Companion.getUNBATTLEABLE(), true);
             entity.getPersistentData().putBoolean(HELPER_TAG, true);
             level.addFreshEntity(entity);
             level.sendParticles(ParticleTypes.END_ROD, pos.x, pos.y + 1, pos.z, 40, 0.8, 1, 0.8, 0.05);

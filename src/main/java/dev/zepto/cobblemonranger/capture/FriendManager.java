@@ -1,13 +1,13 @@
 package dev.zepto.cobblemonranger.capture;
 
 import com.cobblemon.mod.common.Cobblemon;
-import com.cobblemon.mod.common.CobblemonEntities;
 import com.cobblemon.mod.common.api.storage.party.PlayerPartyStore;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.cobblemon.mod.common.util.PlayerExtensionsKt;
 import dev.zepto.cobblemonranger.CobblemonRanger;
 import dev.zepto.cobblemonranger.mission.MissionManager;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -26,7 +26,7 @@ import java.util.UUID;
 
 /**
  * Friend Pokémon are wild Pokémon befriended with a styler. They join the party only so they can fight alongside
- * the player, and go back to the wild when released or once the next battle they were around for is over.
+ * the player, and head home (they despawn) when released or once the next battle they were around for is over.
  */
 public final class FriendManager {
     /** Kept as "partner" so friends captured before the rename are still recognised. */
@@ -90,13 +90,13 @@ public final class FriendManager {
         return released;
     }
 
-    /** Removes a friend from the party and lets it loose next to where it was (or next to the player). */
+    /** Removes a friend from the party and sends it home from where it was (or from next to the player). */
     public static boolean release(ServerPlayer player, Pokemon pokemon) {
         return release(player, pokemon, null, null);
     }
 
     /**
-     * Like {@link #release(ServerPlayer, Pokemon)}, but lets the friend loose at {@code at} and announces it with
+     * Like {@link #release(ServerPlayer, Pokemon)}, but the friend leaves from {@code at} and announces it with
      * {@code message} when those are given.
      */
     public static boolean release(ServerPlayer player, Pokemon pokemon, Vec3 at, Component message) {
@@ -127,17 +127,16 @@ public final class FriendManager {
             return false;
         }
         clearFriend(pokemon);
-        pokemon.heal();
 
+        // The friend heads home instead of being left standing around as a wild Pokémon.
         ServerLevel level = player.serverLevel();
-        PokemonEntity wild = new PokemonEntity(level, pokemon, CobblemonEntities.POKEMON);
-        wild.moveTo(pos.x, pos.y, pos.z, player.getYRot() + 180, 0);
-        level.addFreshEntity(wild);
-        level.sendParticles(ParticleTypes.HAPPY_VILLAGER, pos.x, pos.y + wild.getBbHeight() / 2, pos.z,
-                10, wild.getBbWidth() / 2, wild.getBbHeight() / 2, wild.getBbWidth() / 2, 0);
-        level.playSound(null, wild.blockPosition(), SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.NEUTRAL, 1f, 1.2f);
+        level.sendParticles(ParticleTypes.HAPPY_VILLAGER, pos.x, pos.y + 0.5, pos.z, 10, 0.4, 0.5, 0.4, 0);
+        level.sendParticles(ParticleTypes.CLOUD, pos.x, pos.y + 0.5, pos.z, 12, 0.3, 0.4, 0.3, 0.02);
+        level.playSound(null, BlockPos.containing(pos), SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.NEUTRAL, 1f,
+                1.2f);
         player.displayClientMessage(message != null ? message
-                : Component.translatable("message.cobblemonranger.released", wild.getName()), false);
+                : Component.translatable("message.cobblemonranger.released", pokemon.getSpecies().getTranslatedName()),
+                false);
         return true;
     }
 

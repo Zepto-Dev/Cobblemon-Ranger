@@ -14,13 +14,13 @@ A NeoForge 1.21.1 add-on for [Cobblemon](https://cobblemon.com) that brings the 
   the Pokémon's primary type (charges, projectile bursts, shockwaves, and eruptions), and rarer, higher-level
   Pokémon are faster, attack more often and need more loops.
 - **Friend Pokémon.** A captured Pokémon joins your party as a temporary friend so it can battle with you. It
-  returns to the wild automatically once your next battle is over. You can release friends at any time by sneaking
+  heads home (despawns) automatically once your next battle is over. You can release friends at any time by sneaking
   and using the styler in the air, or with `/ranger release`. `/ranger friends` lists them.
 - **Poké Assists.** During a capture, every friend (and your Partner Pokémon) shows up in a bar under the arena.
   Click one or press its number to call for help; the effect depends on its type. Fire, Electric and Ice stun the
   target, Grass and Bug slow it, Water washes away its attacks, Psychic, Ghost and Dark stop it attacking, Poison,
   Fairy and Dragon make loops stronger, Flying blows attacks away, and the rest give the friendship gauge a boost.
-  A friend goes back to the wild after assisting; the Partner Pokémon can help once per capture and stays.
+  A friend heads home after assisting; the Partner Pokémon can help once per capture and stays.
 - **Partner Pokémon.** Send out one of your own Pokémon and use the styler on it to make it your Partner Pokémon.
   While it is in your party it follows you around (and is sent back out after battles and when you log in), makes
   every Poké Assist 50% stronger, helps with field moves without leaving, and gains friendship from captures.
@@ -45,18 +45,20 @@ A NeoForge 1.21.1 add-on for [Cobblemon](https://cobblemon.com) that brings the 
   level is also capped by your rank: rank 1 gets Novice missions, rank 2 Apprentice, rank 4 Journeyman, rank 6
   Expert and rank 8 Master. Ranger points raise your rank (1 to 10), shown at the top left while you hold a styler
   along with your mission. `/ranger mission` and `/ranger rank` show your progress; `/ranger mission abandon` drops a
-  mission.
+  mission. For testing, operators (or single player with cheats) can set a rank with
+  `/ranger setrank <1-10> [players]`.
 - **Ranger Signs.** Press G (rebindable) with a styler in your inventory and draw a sign in one stroke to call a
   legendary Pokémon. Signs unlock as your rank goes up and cost 10 styler energy: Celebi (circle, rank 1) makes
   plants grow, Suicune (wave, rank 2) heals you and your party, Entei (triangle, rank 3) burns hostile mobs, Raikou
   (lightning bolt, rank 4) strikes them with lightning, Latios (V, rank 5) flies you home, and Groudon (M, rank 6)
-  clears the weather. Each has its own cooldown.
+  clears the weather. Each has its own cooldown. The legendary only appears for a few seconds and can't be caught
+  or battled.
 - **Styler energy** is the styler's durability. It recharges slowly while carried and can be topped up with
   redstone at an anvil. Stylers never break; an empty one just can't start a capture.
 - **Upgrade modules** (Energy, Line Length, Loop Power) can be found in structure chests (dungeons, mineshafts,
   temples, strongholds, ancient cities, shipwrecks, trial chambers and more). Apply one at a smithing table:
   module in the template slot, styler as the base, and a redstone block, string or amethyst shard as the
-  material. Each stat goes up to Lv. 5.
+  material. Each stat goes up to Lv. 5. The upgrade recipes show up in JEI and EMI under smithing.
 
 ## Building
 

@@ -54,6 +54,7 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
     private final int lineColor;
     private final int bezelColor;
     private final ArenaTheme.Arena arena;
+    private final AttackEffects attacks;
     private final List<float[]> decorations = new ArrayList<>();
     private final List<float[]> canopyShade = new ArrayList<>();
 
@@ -85,6 +86,8 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
         this.game = new CaptureGame(payload.pokemonType(), payload.catchRate(), payload.level(), payload.energy(),
                 payload.maxEnergy(), payload.lineLength(), payload.loopPower(), sizeHint,
                 System.nanoTime(), this);
+        this.attacks = new AttackEffects(game, AttackArt.resolve(payload.pokemonType(), arena.theme(),
+                arena.plantTint(), typeColor(payload.pokemonType())));
     }
 
     @Override
@@ -121,6 +124,7 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
         float dt = lastFrameNanos < 0 ? 0 : Math.min(0.05f, (now - lastFrameNanos) / 1e9f);
         lastFrameNanos = now;
         game.tick(dt);
+        attacks.tick(dt);
         shake = Math.max(0, shake - dt);
         assistBannerTime = Math.max(0, assistBannerTime - dt);
 
@@ -408,18 +412,13 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
             int alpha = (int) (game.hitFlash / 0.35f * 0x70);
             shapes.rect(arenaX, arenaY, arenaX + w, arenaY + h, (alpha << 24) | 0xFF2020);
         }
-        for (CaptureGame.Hazard hazard : game.hazards) {
-            float hx = sx(hazard.x), hy = sy(hazard.y), r = hazard.radius * scale;
-            if (hazard.exploding()) {
-                shapes.disc(hx, hy, r, 0xC0FF7A1A);
-                shapes.disc(hx, hy, r * 0.6f, 0xE0FFD23F);
-            } else {
-                float pulse = 0.5f + 0.5f * (float) Math.sin(hazard.timer * 20);
-                shapes.disc(hx, hy, r, ((int) (0x30 + 0x30 * pulse) << 24) | 0xFF3030);
-                shapes.ring(hx, hy, r, 1.5f, 0xC0FF5050);
-            }
-        }
+        graphics.flush();
+        graphics.enableScissor((int) arenaX, (int) arenaY, (int) Math.ceil(arenaX + w), (int) Math.ceil(arenaY + h));
+        attacks.drawGround(graphics, arenaX, arenaY, scale);
+        graphics.disableScissor();
+
         // Shadow under the Pokémon
+        shapes = new Shapes(graphics);
         shapes.disc(sx(game.x), sy(game.y) + game.radius * scale * 0.7f, game.radius * scale * 0.7f, 0x50000000);
         graphics.flush();
     }
@@ -486,16 +485,11 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
     }
 
     private void drawEffects(GuiGraphics graphics) {
+        graphics.enableScissor((int) arenaX, (int) arenaY, (int) Math.ceil(arenaX + CaptureGame.WIDTH * scale),
+                (int) Math.ceil(arenaY + CaptureGame.HEIGHT * scale));
+        attacks.drawAir(graphics, arenaX, arenaY, scale);
+        graphics.disableScissor();
         Shapes shapes = new Shapes(graphics);
-        int attackColor = attackColor(game.signatureAttack);
-
-        for (CaptureGame.Shockwave wave : game.shockwaves) {
-            shapes.ring(sx(wave.x), sy(wave.y), wave.radius * scale, 3f * scale, attackColor | 0xD0000000);
-        }
-        for (CaptureGame.Projectile p : game.projectiles) {
-            shapes.disc(sx(p.x), sy(p.y), p.radius * scale, attackColor | 0xFF000000);
-            shapes.disc(sx(p.x), sy(p.y), p.radius * scale * 0.5f, 0xFFFFFFFF);
-        }
 
         // Dashed target ring around the Pokémon, turning slowly.
         float px = sx(game.x), py = sy(game.y), ringRadius = (game.radius + 6) * scale;
@@ -877,15 +871,6 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
             case "steel" -> 0xB8B8D0;
             case "fairy" -> 0xEE99AC;
             default -> 0xA8A878;
-        };
-    }
-
-    private static int attackColor(CaptureGame.AttackStyle style) {
-        return switch (style) {
-            case DASH -> 0xFFFFFF;
-            case BURST -> 0x4FC3F7;
-            case SHOCKWAVE -> 0xE040FB;
-            case ERUPTION -> 0xFF7A1A;
         };
     }
 

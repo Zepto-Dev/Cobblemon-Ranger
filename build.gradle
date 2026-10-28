@@ -24,6 +24,16 @@ repositories {
         url = 'https://thedarkcolour.github.io/KotlinForForge/'
         content { includeGroup 'thedarkcolour' }
     }
+    maven {
+        name = 'JEI'
+        url = 'https://maven.blamejared.com/'
+        content { includeGroup 'mezz.jei' }
+    }
+    maven {
+        name = 'EMI'
+        url = 'https://maven.terraformersmc.com/releases/'
+        content { includeGroup 'dev.emi' }
+    }
 }
 
 neoForge {
@@ -71,6 +81,18 @@ dependencies {
     // against cobblemon_version on a different Cobblemon, which is how players run the released jar.
     localRuntime "com.cobblemon:neoforge:${project.findProperty('cobblemon_runtime_version') ?: cobblemon_version}"
     localRuntime "thedarkcolour:kotlinforforge-neoforge:${kff_version}"
+
+    // Recipe viewer plugins (compat/), only loaded when JEI or EMI is installed. -Pwith_jei / -Pwith_emi adds one to
+    // the dev runs.
+    compileOnly "mezz.jei:jei-${minecraft_version}-common-api:${jei_version}"
+    compileOnly "mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}"
+    compileOnly "dev.emi:emi-neoforge:${emi_version}:api"
+    if (project.hasProperty('with_jei')) {
+        localRuntime "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
+    }
+    if (project.hasProperty('with_emi')) {
+        localRuntime "dev.emi:emi-neoforge:${emi_version}"
+    }
 }
 
 var generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {

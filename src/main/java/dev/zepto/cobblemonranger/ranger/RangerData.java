@@ -39,6 +39,11 @@ public record RangerData(Optional<UUID> partner, int points, int missionsDone, O
         return rank;
     }
 
+    /** Points needed to reach {@code rank}. */
+    public static int pointsForRank(int rank) {
+        return RANK_POINTS[Math.max(1, Math.min(rank, MAX_RANK)) - 1];
+    }
+
     /** Points needed for the next rank, or -1 at the top rank. */
     public static int pointsForNextRank(int rank) {
         return rank >= MAX_RANK ? -1 : RANK_POINTS[rank];
@@ -49,6 +54,10 @@ public record RangerData(Optional<UUID> partner, int points, int missionsDone, O
     }
 
     public RangerData withPartner(Optional<UUID> partner) {
+        return new RangerData(partner, points, missionsDone, mission, signCooldowns);
+    }
+
+    public RangerData withPoints(int points) {
         return new RangerData(partner, points, missionsDone, mission, signCooldowns);
     }
 

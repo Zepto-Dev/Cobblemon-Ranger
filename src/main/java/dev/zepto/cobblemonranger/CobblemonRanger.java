@@ -16,6 +16,7 @@ import dev.zepto.cobblemonranger.registry.ModCreativeTabs;
 import dev.zepto.cobblemonranger.registry.ModDataComponents;
 import dev.zepto.cobblemonranger.registry.ModEffects;
 import dev.zepto.cobblemonranger.registry.ModItems;
+import dev.zepto.cobblemonranger.registry.ModMenus;
 import dev.zepto.cobblemonranger.registry.ModRecipes;
 import dev.zepto.cobblemonranger.registry.ModVillagers;
 import dev.zepto.cobblemonranger.signs.SignManager;
@@ -40,6 +41,7 @@ public final class CobblemonRanger {
         ModEffects.EFFECTS.register(modBus);
         ModBlocks.BLOCKS.register(modBus);
         ModItems.ITEMS.register(modBus);
+        ModMenus.MENUS.register(modBus);
         ModVillagers.POI_TYPES.register(modBus);
         ModVillagers.PROFESSIONS.register(modBus);
         ModRecipes.SERIALIZERS.register(modBus);

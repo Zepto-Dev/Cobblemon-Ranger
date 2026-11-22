@@ -54,11 +54,15 @@ A NeoForge 1.21.1 add-on for [Cobblemon](https://cobblemon.com) that brings the 
   clears the weather. Each has its own cooldown. The legendary only appears for a few seconds and can't be caught
   or battled.
 - **Styler energy** is the styler's durability. It recharges slowly while carried and can be topped up with
-  redstone at an anvil. Stylers never break; an empty one just can't start a capture.
+  redstone at an anvil. Stylers never break; an empty one just can't start a capture. A Ranger HQ Terminal can
+  also charge it to full, once every 10 minutes per player (`hqChargeCooldownMinutes` in the server config).
 - **Upgrade modules** (Energy, Line Length, Loop Power) can be found in structure chests (dungeons, mineshafts,
-  temples, strongholds, ancient cities, shipwrecks, trial chambers and more). Apply one at a smithing table:
-  module in the template slot, styler as the base, and a redstone block, string or amethyst shard as the
-  material. Each stat goes up to Lv. 5. The upgrade recipes show up in JEI and EMI under smithing.
+  temples, strongholds, ancient cities, shipwrecks, trial chambers and more). Install one at a **Ranger HQ
+  Terminal**: use the terminal, put the styler, the module and its material (a redstone block, string or amethyst
+  shard) in the three slots and press Install. Each stat goes up to Lv. 5. JEI and EMI explain this in their info
+  pages.
+- **Ranger HQ Terminal screen**: besides upgrades and charging, it shows your Ranger rank, your current mission,
+  who to report to and its reward, or how long until Rangers have a new mission for you.
 
 ## Building
 

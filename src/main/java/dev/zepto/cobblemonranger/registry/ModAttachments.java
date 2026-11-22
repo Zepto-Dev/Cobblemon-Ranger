@@ -20,6 +20,10 @@ public final class ModAttachments {
     public static final Supplier<AttachmentType<Long>> NEXT_MISSION = ATTACHMENTS.register("next_mission",
             () -> AttachmentType.builder(() -> 0L).serialize(Codec.LONG).copyOnDeath().build());
 
+    /** Game time after which a Ranger HQ Terminal will charge this player's styler again. */
+    public static final Supplier<AttachmentType<Long>> NEXT_HQ_CHARGE = ATTACHMENTS.register("next_hq_charge",
+            () -> AttachmentType.builder(() -> 0L).serialize(Codec.LONG).copyOnDeath().build());
+
     private ModAttachments() {
     }
 }

@@ -305,6 +305,38 @@ public final class MissionManager {
         }
     }
 
+    /** The mission panel of the Ranger HQ Terminal screen: rank, the current mission and when the next one comes. */
+    public static List<Component> hqLines(ServerPlayer player) {
+        RangerData data = RangerManager.get(player);
+        List<Component> lines = new ArrayList<>();
+        int next = RangerData.pointsForNextRank(data.rank());
+        lines.add(Component.translatable("gui.cobblemonranger.hq.rank", data.rank(), RangerManager.rankTitle(data.rank()))
+                .withStyle(ChatFormatting.DARK_AQUA));
+        lines.add(Component.translatable(next < 0 ? "gui.cobblemonranger.hq.points_max" : "gui.cobblemonranger.hq.points",
+                data.points(), next).withStyle(ChatFormatting.DARK_GRAY));
+        lines.add(Component.empty());
+        Optional<Mission> current = data.mission();
+        if (current.isPresent()) {
+            Mission mission = current.get();
+            lines.add(Component.translatable("gui.cobblemonranger.hq.mission_header", tierName(mission.tier()))
+                    .withStyle(ChatFormatting.GOLD));
+            lines.add(RangerManager.missionLine(mission).copy().withStyle(ChatFormatting.BLACK));
+            lines.add(Component.translatable(mission.isComplete() ? "gui.cobblemonranger.hq.mission_done"
+                    : "gui.cobblemonranger.hq.mission_giver", mission.giverName())
+                    .withStyle(mission.isComplete() ? ChatFormatting.DARK_GREEN : ChatFormatting.DARK_GRAY));
+            lines.add(Component.translatable("gui.cobblemonranger.hq.mission_reward", mission.emeralds(), mission.xp(),
+                    mission.points()).withStyle(ChatFormatting.DARK_GRAY));
+        } else {
+            lines.add(Component.translatable("gui.cobblemonranger.hq.no_mission").withStyle(ChatFormatting.GOLD));
+            long wait = player.getData(ModAttachments.NEXT_MISSION) - RangerManager.now(player);
+            lines.add((wait > 0
+                    ? Component.translatable("gui.cobblemonranger.hq.next_mission", (wait + 1199) / 1200)
+                    : Component.translatable("gui.cobblemonranger.hq.mission_ready"))
+                    .withStyle(ChatFormatting.DARK_GRAY));
+        }
+        return lines;
+    }
+
     // ------------------------------------------------------------------ commands
 
     public static boolean accept(ServerPlayer player) {

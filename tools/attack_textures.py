@@ -5,7 +5,7 @@ as bubbles underwater). Columns 0-3 are the projectile's animation frames, 4-5 a
 effects and shockwave rings, and 6-7 smaller copies of that particle for when it fades out.
 
 blasts.png is a grid of 32x32 cells with one row per eruption style. Columns 0-1 are the warning marker shown before
-the blast, 2-5 the blast itself.
+the blast, 2-5 the blast itself: a bold cartoon burst for every row except the cave rockfall.
 
 Row order must match client/AttackArt.java. Run from the repository root: python3 tools/attack_textures.py
 """
@@ -46,6 +46,11 @@ PALETTES = {
     "steam": [0x8A949E, 0xB8C2CC, 0xDCE2E8, 0xF2F6FA, 0xFFFFFF],
     "lava": [0x3A0A06, 0xA0200C, 0xE85A10, 0xFFA020, 0xFFE070],
     "sand": [0x7A5A2A, 0xC09A58, 0xE0C080, 0xF4DEA8, 0xFFF6DC],
+    # Extra colours for the drawn sprites below (not rows of their own).
+    "normal_warm": [0x5A4228, 0xC09A62, 0xEED7A4, 0xFFF3D2, 0xFFFFFF],
+    "dragon_flame": [0x0A3A4A, 0x1A8A9A, 0x3AD0D0, 0x9AF8EE, 0xFFFFFF],
+    "meteor": [0x1A1030, 0x3A2A5A, 0x5A4A80, 0x8A7AB0, 0xC0B0E0],
+    "wisp": [0x0A1A4A, 0x2A4AB0, 0x4A8AF0, 0x9AC8FF, 0xFFFFFF],
     # Drawn in greys and tinted at runtime with the colour of the arena's ground.
     "dust": [0x6E6E6E, 0x9A9A9A, 0xC4C4C4, 0xE2E2E2, 0xFFFFFF],
 }
@@ -125,17 +130,6 @@ def teardrop(x, y):
     return -5.5 <= x <= 1.5 and abs(y) <= 3.6 * (x + 5.5) / 7
 
 
-def comet(phase):
-    def inside(x, y):
-        if (x - 2) ** 2 + y * y <= 3.4 ** 2:
-            return True
-        if -6.5 <= x <= 2:
-            flicker = 0.6 * math.sin(x * 1.7 + phase * 1.9)
-            return abs(y) <= 3.4 * (x + 6.5) / 8.5 + flicker
-        return False
-    return inside
-
-
 def leaf(x, y):
     return abs(x) <= 6 and abs(y) <= 2.9 * (1 - (x / 6) ** 2)
 
@@ -171,11 +165,52 @@ def rock(seed):
     return inside
 
 
+def poly(pts):
+    def inside(x, y):
+        c = False
+        for i in range(len(pts)):
+            (x1, y1), (x2, y2) = pts[i], pts[(i + 1) % len(pts)]
+            if (y1 > y) != (y2 > y) and x < (x2 - x1) * (y - y1) / (y2 - y1) + x1:
+                c = not c
+        return c
+    return inside
+
+
+def shift(fn, dx, dy):
+    return lambda x, y: fn(x - dx, y - dy)
+
+
+def radial(levels, cx=7.5, cy=7.5):
+    """Shade by distance from a pixel: levels is [(shade, max distance), ...], brightest first."""
+    def shade(x, y):
+        d = math.hypot(x - cx, y - cy)
+        for level, edge in levels:
+            if d <= edge:
+                return level
+        return 1
+    return shade
+
+
+def flame(i, length=6.5, r=3.4, tongues=3):
+    """A flame pointing right: round head and a flickering forked tail."""
+    def inside(x, y):
+        if (x - 2) ** 2 + y * y <= r * r:
+            return True
+        if -length <= x <= 2:
+            k = (x + length) / (length + 2)
+            fork = 0.9 * math.sin((y / max(0.5, r * k)) * tongues * 1.5 + i * 1.8) * (1 - k)
+            return abs(y) <= r * k + fork
+        return False
+    return inside
+
+
 # ---------------------------------------------------------------- projectiles (columns 0-3)
 # kind: "orient" sprites point along +x and are rotated by the game to face where they fly; "spin" sprites turn
 # through the frames; "pulse" sprites throb.
 
 def missile_frames(name):
+    if name in DRAWN:
+        return [DRAWN[name](i) for i in range(4)]
     pal = palette(name)
     frames = []
     for i in range(4):
@@ -191,25 +226,19 @@ def pulse(fn_for_scale):
     return lambda i: fn_for_scale(1 + 0.08 * math.sin(i * math.pi / 2))
 
 
+# Projectiles drawn from a single shaded mask; the layered ones are in DRAWN below.
 MISSILES = {
-    "normal": lambda i: (rotate(star(4, 2.2, 6.2), i * math.pi / 8), True),
-    "fire": lambda i: (comet(i), True),
     "water": lambda i: (scaled(teardrop, 1 + 0.05 * (i % 2)), True),
     "grass": lambda i: (rotate(leaf, i * math.pi / 4), True),
     "electric": lambda i: (orb(3.6 + 0.4 * (i % 2)), True),
     "ice": lambda i: (shard, True),
-    "fighting": lambda i: (lumpy(4.6, 6, 0.12, i * 0.8), True),
     "poison": lambda i: (lumpy(4.4 + 0.3 * math.sin(i * math.pi / 2), 5, 0.13, i * 0.5), True),
     "ground": lambda i: (rotate(rock(8), i * math.pi / 2), True),
     "flying": lambda i: (scaled(crescent, 1 + 0.04 * (i % 2)), True),
-    "psychic": lambda i: (ring(1.8 + 0.5 * (i % 2), 5 + 0.4 * (i % 2)), True),
     "bug": lambda i: (needle, True),
     "rock": lambda i: (rotate(rock(3), i * math.pi / 2), True),
-    "ghost": lambda i: (comet(i + 2), True),
-    "dragon": lambda i: (comet(i + 4), True),
     "dark": lambda i: (rotate(crescent, math.pi + i * math.pi / 2), True),
     "steel": lambda i: (rotate(star(4, 1.6, 6.4), i * math.pi / 8), True),
-    "fairy": lambda i: (rotate(star(5, 2.4, 6), i * math.pi / 10), True),
     "bubble": lambda i: (orb(4.6 + 0.3 * math.sin(i * math.pi / 2)), True),
     "steam": lambda i: (lumpy(4.6, 6, 0.15, i), False),
     "lava": lambda i: (lumpy(4.4, 5, 0.14, i * 0.7), True),
@@ -258,13 +287,92 @@ def decorate(name, img, frame, pal):
                 put(x, 8, pal[4] if x == 9 + frame % 2 else pal[3])
     elif name == "flying":
         put(10 + frame % 2, 6, pal[4])
-    elif name == "psychic":
-        for k in range(4):
-            angle = k * math.pi / 2 + frame * math.pi / 4
-            put(int(8 + math.cos(angle) * 6.2), int(8 + math.sin(angle) * 6.2), pal[4])
     elif name == "lava":
         for x, y in ((6, 7), (10, 9), (8, 11)):
             put(x + frame % 2, y, pal[1])
+
+
+# Projectiles that are layered from several shapes rather than one shaded mask. Each returns frame i of 4.
+
+def new(size=16):
+    return Image.new("RGBA", (size, size), (0, 0, 0, 0))
+
+
+def normal_burst(i):
+    """A comic impact burst in warm cream that throbs; kept well away from Steel's grey shuriken."""
+    img = new()
+    k = 1.1 if i % 2 else 0.9
+    points = [(j * math.pi / 8 + 0.1, (6.9 if j % 2 == 0 else 3.6) * (1.0 if j % 4 else 0.92)) for j in range(16)]
+    burst = poly([(math.cos(a) * r, math.sin(a) * r) for a, r in points])
+    Mask(16, scaled(burst, k)).draw(img, 0, 0, palette("normal_warm"), glossy=False,
+                                     shade=radial([(4, 1.6), (3, 3.2), (2, 5)]))
+    return img
+
+
+def fighting_aura(i):
+    """Focus energy: a hot core with flame tongues licking round it as it spins."""
+    img = new()
+    pal = palette("fighting")
+    tongues = lambda x, y: math.hypot(x, y) <= 4.6 + 2.4 * max(0, math.sin(5 * math.atan2(y, x) + i * math.pi / 2.5)) ** 2
+    Mask(16, tongues).draw(img, 0, 0, pal, glossy=False, shade=lambda x, y: 1)
+    Mask(16, orb(4.2)).draw(img, 0, 0, pal, outline=False, glossy=False, shade=radial([(4, 1.4), (3, 2.6), (2, 4.4)]))
+    return img
+
+
+def dragon_meteor(i):
+    """Draco Meteor: a dark rock wreathed in purple and teal fire."""
+    img = new()
+    outer = lambda x, y: (x - 2) ** 2 + y * y <= 4.6 ** 2 or (
+        -7.5 <= x <= 2 and abs(y) <= 4.6 * (x + 7.5) / 9.5 + 0.7 * math.sin(x * 1.5 + i * 1.9))
+    inner = lambda x, y: (x - 2) ** 2 + y * y <= 3.4 ** 2 or (
+        -4.5 <= x <= 2 and abs(y) <= 3.0 * (x + 4.5) / 6.5 + 0.5 * math.sin(x * 2 + i * 2.3))
+    Mask(16, outer).draw(img, 0, 0, palette("dragon"), glossy=False,
+                         shade=lambda x, y: 3 if x > 9 else 2 if abs(y - 7.5) < 2.5 else 1)
+    Mask(16, inner).draw(img, 0, 0, palette("dragon_flame"), outline=False, glossy=False, shade=lambda x, y: 3)
+    Mask(16, shift(scaled(rotate(rock(5), i * math.pi / 2), 0.75), 3, 0)).draw(img, 0, 0, palette("meteor"))
+    return img
+
+
+def fire_wisp(i):
+    """A flame streaming behind its bright head."""
+    img = new()
+    Mask(16, flame(i, 7.0, 3.6)).draw(img, 0, 0, palette("fire"), glossy=False, shade=lambda x, y: (
+        4 if x > 9 and abs(y - 7.5) < 1.6 else 3 if x > 6 and abs(y - 7.5) < 2.6 else 2))
+    return img
+
+
+def psychic_orb(i):
+    """A glowing orb inside a pulsing halo."""
+    img = new()
+    pal = palette("psychic")
+    r = 6.0 + 0.6 * (i % 2)
+    Mask(16, ring(r - 1.0, r)).draw(img, 0, 0, pal, outline=False, glossy=False, shade=lambda x, y: 3)
+    Mask(16, orb(3.6)).draw(img, 0, 0, pal, shade=radial([(4, 0.6), (3, 2.0), (2, 3.4)], 7, 7))
+    return img
+
+
+def ghost_wisp(i):
+    """Will-o-wisp: a cold blue flame."""
+    img = new()
+    Mask(16, flame(i, 6.0, 3.6, 2)).draw(img, 0, 0, palette("wisp"), glossy=False, shade=lambda x, y: (
+        4 if x > 9 and abs(y - 7.5) < 1.4 else 3 if x > 6 else 2))
+    return img
+
+
+def fairy_sparkles(i):
+    """A cluster of twinkling sparkles, each shrinking and growing in turn."""
+    img = new()
+    pal = palette("fairy")
+    for k, (x, y, size) in enumerate(((7, 7, 3), (2, 3, 2), (12, 4, 2), (11, 12, 2), (3, 12, 1))):
+        size = size if (k + i) % 2 == 0 else max(1, size - 1)
+        for d in range(-size, size + 1):
+            img.putpixel((x + d, y), pal[3] if d else pal[4])
+            img.putpixel((x, y + d), pal[3] if d else pal[4])
+    return img
+
+
+DRAWN = {"normal": normal_burst, "fighting": fighting_aura, "dragon": dragon_meteor, "fire": fire_wisp,
+         "psychic": psychic_orb, "ghost": ghost_wisp, "fairy": fairy_sparkles}
 
 
 # ---------------------------------------------------------------- particles (columns 4-7)
@@ -350,130 +458,90 @@ def shrink(rows):
 # ---------------------------------------------------------------- blasts (32x32)
 
 BLASTS = [
-    # name, palette, warning style, burst style, lobes, amplitude
-    ("fire", "fire", "cracks", "flame", 7, 0.32),
-    ("ground", "ground", "cracks", "spike", 6, 0.38),
-    ("rock", "rock", "cracks", "spike", 5, 0.45),
-    ("lava", "lava", "cracks", "flame", 6, 0.25),
-    ("sand", "sand", "spiral", "lumpy", 9, 0.22),
-    ("steam", "steam", "ripples", "lumpy", 7, 0.18),
-    ("generic", "dust", "cracks", "lumpy", 8, 0.2),
-    ("rockfall", "rock", "shadow", "shatter", 0, 0),
+    # name, palette, lobes, pointy
+    ("fire", "fire", 6, False),
+    ("ground", "ground", 5, True),
+    ("rock", "rock", 5, True),
+    ("lava", "lava", 6, False),
+    ("sand", "sand", 8, False),
+    ("steam", "steam", 7, False),
+    ("generic", "dust", 7, False),
+    ("rockfall", "rock", 0, False),
 ]
 
 
-def wave(style, k, theta, phase):
-    if style == "flame":
-        # Two sets of tongues at different counts so the flames look uneven rather than like petals.
-        tongues = 0.6 * abs(math.sin(k * theta / 2 + phase)) ** 0.5 + 0.4 * abs(math.sin((k + 3) * theta / 2 - phase * 1.7)) ** 0.5
-        return tongues * 2 - 1
-    if style == "spike":
-        return abs(math.cos(k * theta / 2 + phase)) ** 2.5 * 2 - 1
-    return math.sin(k * theta + phase)
+def blast_frame(pal_name, lobes, pointy, f):
+    """A bold cartoon burst: three flat bands, a puffy (or spiky) edge and a thick outline. Hollows out and breaks up."""
+    img = new(32)
+    pal = palette(pal_name)
+    t = (f + 1) / 4
+    r = 6 + 8.5 * (1 - (1 - t) ** 2)
 
-
-def blast_frame(name, pal_name, style, k, amp, t, seed):
-    img = Image.new("RGBA", (32, 32), (0, 0, 0, 0))
-    pal = palette(pal_name, 225 if pal_name == "steam" else 255)
-    rng = random.Random(seed)
-    if style == "shatter":
-        # A boulder hits the ground and breaks into chunks flying outwards.
-        Mask(32, lumpy(4 + 5 * t, 6, 0.2)).draw(img, 0, 0, palette("dust", 150), outline=False, glossy=False)
-        for c in range(7):
-            angle = c * 2 * math.pi / 7 + 0.4
-            dist = 3 + t * 11
-            size = 3.2 - t * 1.6
-            fn = rock(c + 20)
-            cx, cy = math.cos(angle) * dist, math.sin(angle) * dist
-            Mask(32, lambda x, y, fn=fn, cx=cx, cy=cy, s=size / 3.6: fn((x - cx) / s, (y - cy) / s)).draw(
-                img, 0, 0, pal)
-        return img
-    radius = 5 + 9.5 * (1 - (1 - t) ** 2)
-    phase = t * 1.3
-    hollow = max(0.0, (t - 0.45) * 1.6) * radius
-    if hollow < 2:
-        hollow = 0.0
-
-    def inside(x, y):
-        d = math.hypot(x, y)
-        return hollow <= d <= radius * (1 + amp * wave(style, k, math.atan2(y, x), phase))
+    def edge(a):
+        if pointy:
+            return r * (0.72 + 0.4 * abs(math.cos(lobes * a / 2 + t)) ** 3)
+        return r * (0.86 + 0.14 * abs(math.sin(lobes * a / 2 + t * 2)))
+    hollow = 0 if f < 2 else r * (0.25 if f == 2 else 0.6)
 
     def shade(x, y):
         dx, dy = x + 0.5 - 16, y + 0.5 - 16
-        d = math.hypot(dx, dy)
-        edge = radius * (1 + amp * wave(style, k, math.atan2(dy, dx), phase))
-        rel = (d - hollow) / max(0.1, edge - hollow)
-        hot = 1 - t * 0.6
-        if rel < 0.3 * hot:
-            return 4
-        if rel < 0.55 * hot + 0.1:
-            return 3
-        if rel < 0.85:
-            return 2
-        return 1
-
-    mask = Mask(32, inside)
-    if t >= 0.99:
-        # Last frame breaks up into scattered bits.
-        mask.pixels = {p for p in mask.pixels if rng.random() < 0.45}
-    mask.draw(img, 0, 0, pal, outline=pal_name not in ("steam", "dust"), glossy=False, shade=shade)
-    # Flying debris around the blast.
-    for _ in range(int(6 + 10 * t)):
-        angle = rng.uniform(0, 2 * math.pi)
-        d = radius * rng.uniform(0.9, 1.25)
-        x, y = int(16 + math.cos(angle) * d), int(16 + math.sin(angle) * d)
-        if 0 <= x < 32 and 0 <= y < 32:
-            img.putpixel((x, y), pal[rng.choice((1, 2, 3))])
+        rel = math.hypot(dx, dy) / max(0.1, edge(math.atan2(dy, dx)))
+        return 4 if rel < 0.42 else 3 if rel < 0.72 else 2
+    mask = Mask(32, lambda x, y: hollow <= math.hypot(x, y) <= edge(math.atan2(y, x)))
+    if f == 3:
+        rng = random.Random(3)
+        mask.pixels = {q for q in mask.pixels if (q[0] // 3 + q[1] // 3 + rng.randrange(2)) % 3 != 0}
+    mask.draw(img, 0, 0, pal, glossy=False, shade=shade)
+    # A second, softer outline ring outside the first makes the edge read as thick.
+    for (x, y) in [p for p in mask.pixels if mask.edge(*p)]:
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            q = (x + dx, y + dy)
+            if q not in mask.pixels and 0 <= q[0] < 32 and 0 <= q[1] < 32 and math.hypot(q[0] - 15.5, q[1] - 15.5) > hollow + 1:
+                img.putpixel(q, pal[0][:3] + (160,))
     return img
 
 
-def warning_frame(pal_name, style, frame, seed):
-    img = Image.new("RGBA", (32, 32), (0, 0, 0, 0))
+def warning_frame(pal_name, frame):
+    """A dashed target ring that tightens on the second frame, over a faint disc, with a cross in the middle."""
+    img = new(32)
     pal = palette(pal_name)
-    rng = random.Random(seed)
-    if style == "shadow":
-        r = 8 + frame * 3
-        Mask(32, lambda x, y: (x / r) ** 2 + (y / (r * 0.7)) ** 2 <= 1).draw(
-            img, 0, 0, [(0, 0, 0, 150)] * 2 + [(0, 0, 0, 180)] * 3, outline=False, glossy=False,
-            shade=lambda x, y: 2 if math.hypot(x - 15.5, (y - 15.5) / 0.7) < r * 0.6 else 1)
-        return img
-    # Every other marker covers the danger area with a faint disc in the attack's colour.
-    Mask(32, orb(14.5)).draw(img, 0, 0, [pal[1][:3] + (80,)] * 5, outline=False, glossy=False)
-    if style == "ripples":
-        for r in (5 + frame * 2, 10 + frame * 2):
-            Mask(32, ring(r - 0.6, r + 0.6)).draw(img, 0, 0, [pal[3]] * 5, outline=False, glossy=False)
-        for _ in range(5):
-            x, y = rng.randrange(8, 24), rng.randrange(8, 24)
-            img.putpixel((x, y), pal[4])
-        return img
-    if style == "spiral":
-        for i in range(40):
-            angle = i * 0.55 + frame * 0.5
-            d = 2 + i * 0.32
-            x, y = int(16 + math.cos(angle) * d), int(16 + math.sin(angle) * d)
-            if 0 <= x < 32 and 0 <= y < 32:
-                img.putpixel((x, y), pal[1 if i % 3 else 0])
-        return img
-    # A ring around the danger area and the ground cracking open from the middle, the cracks glowing brighter on
-    # the second frame.
-    for i in range(48):
-        angle = i * 2 * math.pi / 48
-        if (i + frame * 2) % 6 < 4:
-            img.putpixel((round(15.5 + math.cos(angle) * 14), round(15.5 + math.sin(angle) * 14)), pal[3 if frame else 2])
-    for c in range(5):
-        angle = c * 2 * math.pi / 5 + rng.uniform(-0.3, 0.3)
-        heading = angle
-        x, y = 15.5, 15.5
-        length = 8 + frame * 3 + rng.randrange(2)
-        for step in range(length):
-            heading = angle + rng.uniform(-0.45, 0.45)
-            x += math.cos(heading)
-            y += math.sin(heading)
-            xi, yi = round(x), round(y)
-            if 0 <= xi < 32 and 0 <= yi < 32:
-                img.putpixel((xi, yi), pal[4] if step < 3 + frame * 2 else pal[3] if step < length - 2 else pal[1])
-    for x, y in ((15, 15), (16, 15), (15, 16), (16, 16)):
-        img.putpixel((x, y), pal[4])
+    Mask(32, orb(14.5)).draw(img, 0, 0, [pal[1][:3] + (70,)] * 5, outline=False, glossy=False)
+    r = 13.6 - frame * 1.2
+    for n in range(64):
+        a = n * 2 * math.pi / 64 + frame * 0.2
+        if n % 8 < 5:
+            for rr, c in ((r, pal[0]), (r - 1, pal[3])):
+                x, y = round(15.5 + math.cos(a) * rr), round(15.5 + math.sin(a) * rr)
+                if 0 <= x < 32 and 0 <= y < 32:
+                    img.putpixel((x, y), c)
+    for d in range(-2 - frame, 3 + frame):
+        img.putpixel((15 + d, 15), pal[4] if abs(d) < 2 else pal[3])
+        img.putpixel((15, 15 + d), pal[4] if abs(d) < 2 else pal[3])
+    return img
+
+
+def rockfall_frame(t):
+    """A boulder hits the ground and breaks into chunks flying outwards."""
+    img = new(32)
+    Mask(32, lumpy(4 + 5 * t, 6, 0.2)).draw(img, 0, 0, palette("dust", 150), outline=False, glossy=False)
+    for c in range(7):
+        angle = c * 2 * math.pi / 7 + 0.4
+        dist = 3 + t * 11
+        size = 3.2 - t * 1.6
+        fn = rock(c + 20)
+        cx, cy = math.cos(angle) * dist, math.sin(angle) * dist
+        Mask(32, lambda x, y, fn=fn, cx=cx, cy=cy, s=size / 3.6: fn((x - cx) / s, (y - cy) / s)).draw(
+            img, 0, 0, palette("rock"))
+    return img
+
+
+def rockfall_warning(frame):
+    """The boulder's shadow, growing as it falls."""
+    img = new(32)
+    r = 8 + frame * 3
+    Mask(32, lambda x, y: (x / r) ** 2 + (y / (r * 0.7)) ** 2 <= 1).draw(
+        img, 0, 0, [(0, 0, 0, 150)] * 2 + [(0, 0, 0, 180)] * 3, outline=False, glossy=False,
+        shade=lambda x, y: 2 if math.hypot(x - 15.5, (y - 15.5) / 0.7) < r * 0.6 else 1)
     return img
 
 
@@ -498,13 +566,14 @@ def attacks():
 
 def blasts():
     atlas = Image.new("RGBA", (192, 32 * len(BLASTS)), (0, 0, 0, 0))
-    for row, (name, pal_name, warning, style, k, amp) in enumerate(BLASTS):
-        for f in range(2):
-            frame = warning_frame(pal_name, warning, f, row * 7 + f)
-            atlas.paste(frame, (f * 32, row * 32), frame)
-        for f in range(4):
-            frame = blast_frame(name, pal_name, style, k, amp, (f + 1) / 4, row * 13 + f)
-            atlas.paste(frame, ((2 + f) * 32, row * 32), frame)
+    for row, (name, pal_name, lobes, pointy) in enumerate(BLASTS):
+        if name == "rockfall":
+            frames = [rockfall_warning(f) for f in range(2)] + [rockfall_frame((f + 1) / 4) for f in range(4)]
+        else:
+            frames = [warning_frame(pal_name, f) for f in range(2)] + [blast_frame(pal_name, lobes, pointy, f)
+                                                                     for f in range(4)]
+        for col, frame in enumerate(frames):
+            atlas.paste(frame, (col * 32, row * 32), frame)
     atlas.save(os.path.join(OUT, "blasts.png"))
 
 

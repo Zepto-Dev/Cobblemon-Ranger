@@ -195,7 +195,7 @@
   "gui.cobblemonranger.hq.upgrades": "Styler upgrades",
   "gui.cobblemonranger.hq.install": "Install",
   "gui.cobblemonranger.hq.charge": "Charge styler",
-  "gui.cobblemonranger.hq.charge_cooldown": "Charge again in %s:%s",
+  "gui.cobblemonranger.hq.charge_cooldown": "Ready in %s:%s",
   "gui.cobblemonranger.hq.styler_hint": "Put a styler in the first slot, then a module and its material.",
   "gui.cobblemonranger.hq.need_styler": "Put a styler in the first slot",
   "gui.cobblemonranger.hq.need_module": "Put an upgrade module in the second slot",

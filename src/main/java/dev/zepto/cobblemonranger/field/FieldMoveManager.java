@@ -3,6 +3,7 @@ package dev.zepto.cobblemonranger.field;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import dev.zepto.cobblemonranger.capture.FriendManager;
 import dev.zepto.cobblemonranger.capture.PartnerManager;
+import dev.zepto.cobblemonranger.config.RangerConfig;
 import dev.zepto.cobblemonranger.item.StylerItem;
 import dev.zepto.cobblemonranger.mission.MissionManager;
 import dev.zepto.cobblemonranger.registry.ModEffects;
@@ -29,10 +30,13 @@ import net.neoforged.neoforge.common.CommonHooks;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Clears obstacles with the help of friend Pokémon or the Partner Pokémon. A friend goes back to the wild once it has
@@ -43,6 +47,8 @@ public final class FieldMoveManager {
     private static final int MAX_TREE_LOGS = 128;
     private static final int SOAK_RADIUS = 5;
     private static final int SURF_TICKS = 20 * 120;
+    /** Server tick when each player's Partner Pok\u00e9mon can use a field move again. */
+    private static final Map<UUID, Integer> PARTNER_READY_AT = new HashMap<>();
 
     private FieldMoveManager() {
     }
@@ -104,6 +110,15 @@ public final class FieldMoveManager {
         boolean partner = false;
         Pokemon partnerPokemon = PartnerManager.getPartner(player);
         if (partnerPokemon != null && move.canUse(partnerPokemon) && !partnerPokemon.isFainted()) {
+            // A resting partner doesn't hand the move to a friend, which would send the friend away unasked.
+            int now = player.server.getTickCount();
+            int readyAt = PARTNER_READY_AT.getOrDefault(player.getUUID(), 0);
+            if (now < readyAt) {
+                int seconds = (readyAt - now + 19) / 20;
+                player.displayClientMessage(Component.translatable("message.cobblemonranger.field_move_cooldown",
+                        partnerPokemon.getSpecies().getTranslatedName(), seconds), true);
+                return;
+            }
             if (StylerItem.getEnergy(styler) >= PARTNER_ENERGY_COST) {
                 helper = partnerPokemon;
                 partner = true;
@@ -146,6 +161,8 @@ public final class FieldMoveManager {
         level.sendParticles(ParticleTypes.HAPPY_VILLAGER, center.x, center.y, center.z, 12, 0.6, 0.6, 0.6, 0);
         if (partner) {
             StylerItem.drainEnergy(styler, PARTNER_ENERGY_COST);
+            PARTNER_READY_AT.put(player.getUUID(),
+                    player.server.getTickCount() + RangerConfig.partnerFieldMoveCooldownTicks());
             player.displayClientMessage(Component.translatable("message.cobblemonranger.field_move_partner", name,
                     move.displayName()), true);
         } else {

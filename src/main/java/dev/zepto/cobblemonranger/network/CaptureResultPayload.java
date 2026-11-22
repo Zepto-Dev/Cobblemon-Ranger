@@ -6,14 +6,20 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 
-/** Client to server: the capture minigame ended. {@code damage} is the styler energy lost to hits. */
-public record CaptureResultPayload(int entityId, Outcome outcome, int damage) implements CustomPacketPayload {
+/**
+ * Client to server: the capture minigame ended. {@code damage} is the styler energy lost to hits, less any an Electric
+ * assist put back (so it can be negative). {@code chargeLoops} are the loops drawn around the Pokémon since the Partner's
+ * assist was last used (or all of them), which go towards charging it.
+ */
+public record CaptureResultPayload(int entityId, Outcome outcome, int damage, int chargeLoops)
+        implements CustomPacketPayload {
     public static final Type<CaptureResultPayload> TYPE = new Type<>(CobblemonRanger.id("capture_result"));
 
     public static final StreamCodec<ByteBuf, CaptureResultPayload> STREAM_CODEC = StreamCodec.composite(
             ByteBufCodecs.VAR_INT, CaptureResultPayload::entityId,
             ByteBufCodecs.VAR_INT.map(i -> Outcome.values()[i], Enum::ordinal), CaptureResultPayload::outcome,
             ByteBufCodecs.VAR_INT, CaptureResultPayload::damage,
+            ByteBufCodecs.VAR_INT, CaptureResultPayload::chargeLoops,
             CaptureResultPayload::new);
 
     public enum Outcome {

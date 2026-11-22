@@ -67,6 +67,10 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
     private Component assistBanner = Component.empty();
     private float assistBannerTime;
     private int assistColor;
+    /** Loops towards the Partner's own assist; it can be used once this reaches the payload's full charge. */
+    private int partnerCharge;
+    /** Loops drawn around the Pokémon since the Partner's assist was used, or since the start. */
+    private int chargeLoops;
 
     public CaptureScreen(OpenCapturePayload payload) {
         super(Component.translatable("screen.cobblemonranger.capture"));
@@ -83,7 +87,9 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
                 : ArenaTheme.detect(minecraft.level, anchor);
         scatterDecorations();
         this.assistUsed = new boolean[payload.assists().size()];
-        this.game = new CaptureGame(payload.pokemonType(), payload.catchRate(), payload.level(), payload.energy(),
+        this.partnerCharge = payload.partnerCharge();
+        this.game = new CaptureGame(payload.pokemonType(), payload.secondaryType(), payload.catchRate(), payload.level(),
+                payload.energy(),
                 payload.maxEnergy(), payload.lineLength(), payload.loopPower(), sizeHint,
                 System.nanoTime(), this);
         this.attacks = new AttackEffects(game, AttackArt.resolve(payload.pokemonType(), arena.theme(),
@@ -150,7 +156,8 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
     private void sendResult(CaptureResultPayload.Outcome outcome) {
         if (!resultSent) {
             resultSent = true;
-            PacketDistributor.sendToServer(new CaptureResultPayload(payload.entityId(), outcome, game.damageTaken()));
+            PacketDistributor.sendToServer(new CaptureResultPayload(payload.entityId(), outcome, game.damageTaken(),
+                    chargeLoops));
         }
     }
 
@@ -197,19 +204,39 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
+    private boolean assistReady(int index) {
+        return !assistUsed[index] && game.canUseAssist()
+                && (!payload.assists().get(index).partner() || partnerCharge >= payload.partnerChargeFull());
+    }
+
     private void useAssist(int index) {
-        if (assistUsed[index] || !game.canUseAssist()) {
+        if (!assistReady(index)) {
+            if (!assistUsed[index] && payload.assists().get(index).partner()) {
+                playSound(SoundEvents.NOTE_BLOCK_BASS.value(), 0.8f);
+            }
             return;
         }
         OpenCapturePayload.Assist assist = payload.assists().get(index);
         assistUsed[index] = true;
         CaptureGame.AssistEffect effect = CaptureGame.assistFor(assist.type());
-        assistBanner = Component.translatable("screen.cobblemonranger.assist", assist.name(),
-                Component.translatable("screen.cobblemonranger.assist." + effect.name().toLowerCase(Locale.ROOT)));
-        assistBannerTime = 1.6f;
         assistColor = typeColor(assist.type());
-        game.useAssist(effect, payload.assistStrength());
-        PacketDistributor.sendToServer(new UseAssistPayload(payload.entityId(), assist.pokemonId()));
+        // Sent first: the server checks the Partner's charge against the loops drawn before this assist.
+        PacketDistributor.sendToServer(new UseAssistPayload(payload.entityId(), assist.pokemonId(), game.loops()));
+        if (assist.partner()) {
+            partnerCharge = 0;
+            chargeLoops = 0;
+        }
+        float matchup = game.useAssist(assist.type(), assist.partner() ? payload.assistStrength() : 1f);
+        Component what = Component.translatable("screen.cobblemonranger.assist." + effect.name().toLowerCase(Locale.ROOT));
+        if (matchup <= 0) {
+            what = Component.translatable("screen.cobblemonranger.assist.immune");
+        } else if (matchup >= 2) {
+            what = Component.translatable("screen.cobblemonranger.assist.super", what);
+        } else if (matchup < 1) {
+            what = Component.translatable("screen.cobblemonranger.assist.weak", what);
+        }
+        assistBanner = Component.translatable("screen.cobblemonranger.assist", assist.name(), what);
+        assistBannerTime = 1.8f;
     }
 
     private int bezelBottom() {
@@ -415,6 +442,7 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
         graphics.flush();
         graphics.enableScissor((int) arenaX, (int) arenaY, (int) Math.ceil(arenaX + w), (int) Math.ceil(arenaY + h));
         attacks.drawGround(graphics, arenaX, arenaY, scale);
+        drawAssistGround(graphics);
         graphics.disableScissor();
 
         // Shadow under the Pokémon
@@ -476,7 +504,7 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
             shapes.ring(px, py, r * 1.2f, 2f, 0xC0FF4040);
             graphics.flush();
         }
-        if (game.isStunned() || game.isSlowed() || game.isCalmed()) {
+        if (game.isHeld() || game.isBogged() || game.isSpooked() || game.isTimeSlowed() || game.isBlind()) {
             float pulse = 0.5f + 0.5f * (float) Math.sin(System.currentTimeMillis() / 120.0);
             Shapes shapes = new Shapes(graphics);
             shapes.ring(px, py, r * (1.3f + 0.1f * pulse), 2f, 0xA0000000 | assistColor);
@@ -488,6 +516,7 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
         graphics.enableScissor((int) arenaX, (int) arenaY, (int) Math.ceil(arenaX + CaptureGame.WIDTH * scale),
                 (int) Math.ceil(arenaY + CaptureGame.HEIGHT * scale));
         attacks.drawAir(graphics, arenaX, arenaY, scale);
+        drawAssistAir(graphics);
         graphics.disableScissor();
         Shapes shapes = new Shapes(graphics);
 
@@ -509,6 +538,7 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
         }
 
         List<float[]> line = game.line();
+        int lineColor = game.isLineIron() ? 0xC8D0E0 : this.lineColor;
         for (int i = 1; i < line.size(); i++) {
             float[] a = line.get(i - 1);
             float[] b = line.get(i);
@@ -624,10 +654,20 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
 
         // Effects from assists, as small labels down the right side of the screen.
         List<Component> statuses = new ArrayList<>();
-        if (game.isStunned()) statuses.add(Component.translatable("screen.cobblemonranger.status.stunned"));
-        if (game.isSlowed()) statuses.add(Component.translatable("screen.cobblemonranger.status.slowed"));
-        if (game.isCalmed()) statuses.add(Component.translatable("screen.cobblemonranger.status.calm"));
-        if (game.isBoosted()) statuses.add(Component.translatable("screen.cobblemonranger.status.boosted"));
+        if (game.isFrozen()) statuses.add(Component.translatable("screen.cobblemonranger.status.frozen"));
+        else if (game.isTrapped()) statuses.add(Component.translatable("screen.cobblemonranger.status.trapped"));
+        else if (game.isStunned()) statuses.add(Component.translatable("screen.cobblemonranger.status.stunned"));
+        if (game.isBogged()) statuses.add(Component.translatable("screen.cobblemonranger.status.slowed"));
+        if (game.isTimeSlowed()) statuses.add(Component.translatable("screen.cobblemonranger.status.slow_time"));
+        if (game.isSpooked()) statuses.add(Component.translatable("screen.cobblemonranger.status.spooked"));
+        if (game.isBlind()) statuses.add(Component.translatable("screen.cobblemonranger.status.blind"));
+        if (game.isPoisoned()) statuses.add(Component.translatable("screen.cobblemonranger.status.poisoned"));
+        if (game.isLineLong()) statuses.add(Component.translatable("screen.cobblemonranger.status.long_line"));
+        if (game.isLineIron()) statuses.add(Component.translatable("screen.cobblemonranger.status.iron_line"));
+        if (game.isCounterReady()) statuses.add(Component.translatable("screen.cobblemonranger.status.counter"));
+        if (game.charmLoops() > 0) {
+            statuses.add(Component.translatable("screen.cobblemonranger.status.charm", game.charmLoops()));
+        }
         for (int i = 0; i < statuses.size(); i++) {
             Component status = statuses.get(i);
             int statusRight = right - 6, statusTop = (int) arenaY + 48 + i * 14;
@@ -641,6 +681,9 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
                 || (game.phase() == CaptureGame.Phase.PLAYING && game.phaseTime() < HINT_TIME)) {
             message = Component.translatable(payload.assists().isEmpty()
                     ? "screen.cobblemonranger.hint" : "screen.cobblemonranger.hint_assist");
+        } else if (game.phase() == CaptureGame.Phase.PLAYING && game.drawMode() != CaptureGame.DrawMode.NONE) {
+            message = Component.translatable("screen.cobblemonranger.draw."
+                    + game.drawMode().name().toLowerCase(Locale.ROOT));
         } else if (game.phase() == CaptureGame.Phase.PLAYING && game.isWindingUp()) {
             message = Component.translatable("screen.cobblemonranger.charging", payload.name());
         }
@@ -755,7 +798,7 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
         for (int i = 0; i < payload.assists().size(); i++) {
             OpenCapturePayload.Assist assist = payload.assists().get(i);
             int[] box = assistBox(i);
-            boolean available = !assistUsed[i] && game.canUseAssist();
+            boolean available = assistReady(i);
             int color = 0xFF000000 | typeColor(assist.type());
             int body = available ? color : 0xFF3A4252;
             int edge = assist.partner() ? GOLD : OUTLINE;
@@ -770,8 +813,20 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
             graphics.drawString(font, String.valueOf(i + 1), box[0] + 4, box[1] + 3, available ? 0xFFFFFFFF : 0xFF707888,
                     false);
             String label = (assist.partner() ? "★" : "") + assist.name().getString();
+            boolean charging = assist.partner() && !assistUsed[i] && partnerCharge < payload.partnerChargeFull();
+            if (charging) {
+                label += " " + partnerCharge + "/" + payload.partnerChargeFull();
+            }
             label = font.plainSubstrByWidth(label, box[2] - box[0] - 17);
             graphics.drawString(font, label, box[0] + 14, box[1] + 3, available ? 0xFFFFFFFF : 0xFF8890A0, available);
+            if (charging) {
+                // The Partner's charge meter along the bottom of its button, filled by loops.
+                int meterLeft = box[0] + 13, meterRight = box[2] - 3;
+                int fill = meterLeft + Math.round((meterRight - meterLeft) * partnerCharge
+                        / (float) Math.max(1, payload.partnerChargeFull()));
+                graphics.fill(meterLeft, box[3] - 3, meterRight, box[3] - 1, OUTLINE);
+                graphics.fill(meterLeft, box[3] - 3, fill, box[3] - 1, GOLD);
+            }
         }
     }
 
@@ -799,6 +854,13 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
     @Override
     public void onLoop(boolean enclosed, int loops) {
         if (enclosed) {
+            chargeLoops++;
+            if (partnerCharge < payload.partnerChargeFull()) {
+                partnerCharge++;
+                if (partnerCharge == payload.partnerChargeFull() && hasPartnerAssist()) {
+                    playSound(SoundEvents.NOTE_BLOCK_CHIME.value(), 1.6f);
+                }
+            }
             playSound(SoundEvents.AMETHYST_BLOCK_CHIME, Math.min(2f, 0.9f + loops * 0.07f));
         }
     }
@@ -825,15 +887,205 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
     }
 
     @Override
-    public void onAssist(CaptureGame.AssistEffect effect) {
+    public void onAssist(CaptureGame.AssistEffect effect, float effectiveness) {
+        if (effectiveness <= 0) {
+            playSound(SoundEvents.NOTE_BLOCK_BASS.value(), 0.6f);
+            return;
+        }
         shake = 0.2f;
         playSound(switch (effect) {
-            case STUN -> SoundEvents.FIRECHARGE_USE;
-            case SOAK -> SoundEvents.PLAYER_SPLASH_HIGH_SPEED;
-            case GUST -> SoundEvents.BREEZE_WIND_CHARGE_BURST.value();
-            case CRUSH -> SoundEvents.ANVIL_LAND;
-            default -> SoundEvents.ILLUSIONER_CAST_SPELL;
-        }, 1.2f);
+            case FIRE_RING -> SoundEvents.FIRECHARGE_USE;
+            case BUBBLE -> SoundEvents.BUBBLE_COLUMN_UPWARDS_INSIDE;
+            case THICKET -> SoundEvents.AZALEA_LEAVES_PLACE;
+            case CHARGE -> SoundEvents.BEACON_POWER_SELECT;
+            case ICE_WALL -> SoundEvents.GLASS_PLACE;
+            case QUICKSAND -> SoundEvents.SAND_PLACE;
+            case BOULDER_WALL -> SoundEvents.STONE_PLACE;
+            case WHIRLWIND -> SoundEvents.BREEZE_WIND_CHARGE_BURST.value();
+            case WEB -> SoundEvents.SPIDER_AMBIENT;
+            case SLOW_TIME -> SoundEvents.ILLUSIONER_CAST_SPELL;
+            case SPOOK -> SoundEvents.VEX_CHARGE;
+            case BLIND -> SoundEvents.SQUID_SQUIRT;
+            case POISON -> SoundEvents.BREWING_STAND_BREW;
+            case CHARM -> SoundEvents.ALLAY_ITEM_GIVEN;
+            case DRAGON_RUSH -> SoundEvents.ENDER_DRAGON_GROWL;
+            case IRON_LINE -> SoundEvents.ANVIL_USE;
+            case COUNTER -> SoundEvents.SHIELD_BLOCK;
+            case LONG_LINE -> SoundEvents.FISHING_BOBBER_THROW;
+        }, effect == CaptureGame.AssistEffect.DRAGON_RUSH ? 1.8f : 1.2f);
+    }
+
+    @Override
+    public void onCounter() {
+        shake = 0.25f;
+        playSound(SoundEvents.SHIELD_BLOCK, 1.1f);
+    }
+
+    @Override
+    public void onFrozen() {
+        shake = 0.2f;
+        playSound(SoundEvents.GLASS_BREAK, 0.7f);
+    }
+
+    @Override
+    public void onTrapped() {
+        playSound(SoundEvents.BUBBLE_COLUMN_WHIRLPOOL_INSIDE, 1.4f);
+    }
+
+    private boolean hasPartnerAssist() {
+        for (OpenCapturePayload.Assist assist : payload.assists()) {
+            if (assist.partner()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // ------------------------------------------------------------------ assist effects
+
+    /** What Poké Assists leave on the ground: grass, quicksand, webs, the fire ring's scorch and drawn walls. */
+    private void drawAssistGround(GuiGraphics graphics) {
+        Shapes shapes = new Shapes(graphics);
+        float time = (System.currentTimeMillis() % 100000L) / 1000f;
+        for (CaptureGame.Zone zone : game.zones) {
+            float fade = Math.min(1, zone.life / 0.6f);
+            switch (zone.kind) {
+                case THICKET -> {
+                    shapes.disc(sx(zone.x), sy(zone.y), zone.radius * scale, alpha(0x50, fade) | 0x2E6B2A);
+                    for (int i = 0; i < 30; i++) {
+                        // Tufts spread evenly over the patch, each swaying a little.
+                        float angle = i * 2.39996f;
+                        float dist = (float) Math.sqrt((i + 0.5f) / 30f) * zone.radius * 0.9f;
+                        float tx = zone.x + (float) Math.cos(angle) * dist;
+                        float ty = zone.y + (float) Math.sin(angle) * dist;
+                        float sway = (float) Math.sin(time * 3 + i) * 1.2f;
+                        int blade = alpha(0xE0, fade) | (i % 3 == 0 ? 0x4FA83A : 0x3C8F2E);
+                        for (int b = -1; b <= 1; b++) {
+                            shapes.line(sx(tx + b * 1.5f), sy(ty + 2), sx(tx + b * 3f + sway), sy(ty - 6 + Math.abs(b) * 2),
+                                    1.3f * scale, blade);
+                        }
+                    }
+                }
+                case QUICKSAND -> {
+                    int sand = alpha(0xC0, fade) | 0xC9A55A;
+                    for (int i = 0; i < zone.xs.length; i++) {
+                        int j = (i + 1) % zone.xs.length;
+                        shapes.quad(sx(zone.x), sy(zone.y), sx(zone.xs[i]), sy(zone.ys[i]), sx(zone.xs[j]),
+                                sy(zone.ys[j]), sx(zone.xs[j]), sy(zone.ys[j]), sand);
+                    }
+                    for (int i = 0; i < zone.xs.length; i++) {
+                        int j = (i + 1) % zone.xs.length;
+                        shapes.line(sx(zone.xs[i]), sy(zone.ys[i]), sx(zone.xs[j]), sy(zone.ys[j]), 2f * scale,
+                                alpha(0xE0, fade) | 0x8A6A2E);
+                    }
+                    // Sand swirling down into the middle.
+                    for (int k = 0; k < 3; k++) {
+                        float r = (8 + k * 9) * scale;
+                        shapes.arc(sx(zone.x), sy(zone.y), r, 1.5f * scale, time * (2.5f - k * 0.5f) + k * 2,
+                                (float) Math.PI * 0.9f, alpha(0x90, fade) | 0x7A5A26);
+                    }
+                }
+                case WEB -> {
+                    int silk = alpha(0xD0, fade) | 0xF4F4F4;
+                    float cx = sx(zone.x), cy = sy(zone.y), r = zone.radius * scale;
+                    for (int i = 0; i < 8; i++) {
+                        double a = Math.PI * 2 * i / 8;
+                        shapes.line(cx, cy, cx + (float) Math.cos(a) * r, cy + (float) Math.sin(a) * r, 1f * scale, silk);
+                    }
+                    for (int k = 1; k <= 3; k++) {
+                        shapes.ring(cx, cy, r * k / 3.4f, 0.9f * scale, silk);
+                    }
+                }
+                case FIRE_RING -> shapes.ring(sx(zone.x), sy(zone.y), zone.radius * scale, 7f * scale,
+                        alpha(0x50, fade) | 0x3A1A08);
+                default -> {
+                }
+            }
+        }
+        for (CaptureGame.Wall wall : game.walls) {
+            float fade = Math.min(1, wall.life / 0.6f);
+            List<float[]> points = wall.points;
+            if (wall.ice) {
+                for (int i = 1; i < points.size(); i++) {
+                    float[] a = points.get(i - 1), b = points.get(i);
+                    shapes.line(sx(a[0]), sy(a[1]), sx(b[0]), sy(b[1]), 7f * scale, alpha(0xC0, fade) | 0x9FDCF2);
+                }
+                for (int i = 1; i < points.size(); i++) {
+                    float[] a = points.get(i - 1), b = points.get(i);
+                    shapes.line(sx(a[0]), sy(a[1]), sx(b[0]), sy(b[1]), 2f * scale, alpha(0xF0, fade) | 0xFFFFFF);
+                }
+            } else {
+                for (int i = 0; i < points.size(); i += 1) {
+                    float[] p = points.get(i);
+                    float r = (3.6f + (i * 7 % 5) * 0.4f) * scale;
+                    shapes.disc(sx(p[0]), sy(p[1]) + 1.5f * scale, r, alpha(0x60, fade));
+                    shapes.disc(sx(p[0]), sy(p[1]), r, alpha(0xFF, fade) | 0x6E655A);
+                    shapes.disc(sx(p[0]) - r * 0.3f, sy(p[1]) - r * 0.3f, r * 0.45f, alpha(0xFF, fade) | 0x9C9284);
+                }
+            }
+        }
+        graphics.flush();
+    }
+
+    /** Assist effects that sit above the Pokémon: flames, wind, bubbles, ice and tints over the arena. */
+    private void drawAssistAir(GuiGraphics graphics) {
+        Shapes shapes = new Shapes(graphics);
+        float time = (System.currentTimeMillis() % 100000L) / 1000f;
+        float w = CaptureGame.WIDTH * scale, h = CaptureGame.HEIGHT * scale;
+        if (game.isTimeSlowed()) {
+            shapes.rect(arenaX, arenaY, arenaX + w, arenaY + h, 0x30B060F0);
+        }
+        if (game.isBlind()) {
+            shapes.rect(arenaX, arenaY, arenaX + w, arenaY + h, 0x50100818);
+        }
+        for (CaptureGame.Zone zone : game.zones) {
+            float fade = Math.min(1, zone.life / 0.6f);
+            if (zone.kind == CaptureGame.ZoneKind.FIRE_RING) {
+                int flames = 22;
+                for (int i = 0; i < flames; i++) {
+                    double a = Math.PI * 2 * i / flames + time * 0.4;
+                    float flicker = 0.7f + 0.3f * (float) Math.sin(time * 12 + i * 1.7);
+                    float fx = sx(zone.x + (float) Math.cos(a) * zone.radius);
+                    float fy = sy(zone.y + (float) Math.sin(a) * zone.radius);
+                    shapes.disc(fx, fy - 1.5f * scale, 4.5f * flicker * scale, alpha(0xC0, fade) | 0xF0602A);
+                    shapes.disc(fx, fy - 2.5f * scale, 2.6f * flicker * scale, alpha(0xE0, fade) | 0xFFD040);
+                }
+            } else if (zone.kind == CaptureGame.ZoneKind.WHIRLWIND) {
+                for (int k = 0; k < 4; k++) {
+                    float r = (zone.radius * (0.55f + k * 0.18f)) * scale;
+                    shapes.arc(sx(zone.x), sy(zone.y), r, 2f * scale, -time * (5 + k) + k * 1.6f, (float) Math.PI * 0.7f,
+                            alpha(0xA0, fade) | 0xE8F4FF);
+                }
+            }
+        }
+        for (CaptureGame.Bubble bubble : game.bubbles) {
+            float bx = sx(bubble.x), by = sy(bubble.y), r = bubble.radius * scale;
+            float wobble = 1 + 0.04f * (float) Math.sin(time * 9);
+            shapes.disc(bx, by, r * wobble, 0x3080C8FF);
+            shapes.ring(bx, by, r * wobble, 1.6f * scale, 0xC0B8E8FF);
+            shapes.disc(bx - r * 0.35f, by - r * 0.4f, Math.max(1.5f * scale, r * 0.18f), 0xD0FFFFFF);
+        }
+        if (game.isFrozen()) {
+            float px = sx(game.x), py = sy(game.y), r = game.radius * scale * 1.3f;
+            shapes.rect(px - r, py - r, px + r, py + r, 0x6090D8F0);
+            shapes.line(px - r, py - r, px + r, py - r, 1.5f * scale, 0xE0FFFFFF);
+            shapes.line(px - r, py - r, px - r, py + r, 1.5f * scale, 0xE0FFFFFF);
+            shapes.line(px - r * 0.5f, py - r * 0.6f, px - r * 0.1f, py - r * 0.2f, 1.2f * scale, 0xC0FFFFFF);
+        }
+        CaptureGame.DrawMode mode = game.drawMode();
+        if (mode == CaptureGame.DrawMode.BOULDER || mode == CaptureGame.DrawMode.ICE) {
+            // Ink left for walls, as a bar along the top of the arena.
+            float barWidth = w * 0.3f;
+            float left = arenaX + (w - barWidth) / 2, top = arenaY + 22;
+            shapes.rect(left - 1, top - 1, left + barWidth + 1, top + 4, 0xC0141826);
+            shapes.rect(left, top, left + barWidth * game.inkFraction(), top + 3,
+                    mode == CaptureGame.DrawMode.ICE ? 0xFF9FDCF2 : 0xFF9C9284);
+        }
+        graphics.flush();
+    }
+
+    private static int alpha(int alpha, float fade) {
+        return ((int) (alpha * Math.max(0, Math.min(1, fade)))) << 24;
     }
 
     // ------------------------------------------------------------------ helpers

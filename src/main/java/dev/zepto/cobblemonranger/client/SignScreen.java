@@ -18,10 +18,13 @@ import java.util.List;
 /** Draw a Ranger Sign on the styler's pad to call a legendary Pokémon. The signs the player knows are listed alongside. */
 public class SignScreen extends Screen {
     private static final float CLOSE_DELAY = 0.7f;
+    private static final float MIN_ROW_HEIGHT = 25;
+    private static final float LIST_COLUMN_WIDTH = 150;
 
     private final List<float[]> stroke = new ArrayList<>();
     private boolean drawing;
     private float padX, padY, padSize;
+    private int columns = 1;
     private Component status = Component.empty();
     private int statusColor = 0xFFFFFFFF;
     private RangerSign matched;
@@ -33,8 +36,10 @@ public class SignScreen extends Screen {
 
     @Override
     protected void init() {
-        padSize = Math.min(height - 70, Math.min(220, width * 0.5f));
-        float listWidth = 150;
+        // Ten signs don't fit one column on small screens, so the list wraps into two.
+        columns = (height - 70) / (float) RangerSign.values().length < MIN_ROW_HEIGHT ? 2 : 1;
+        float listWidth = LIST_COLUMN_WIDTH * columns;
+        padSize = Math.max(80, Math.min(height - 70, Math.min(220, Math.min(width * 0.5f, width - 36 - listWidth))));
         float total = padSize + 16 + listWidth;
         padX = (width - total) / 2;
         padY = (height - padSize) / 2 + 6;
@@ -106,7 +111,8 @@ public class SignScreen extends Screen {
         }
         int cooldown = ClientRangerData.cooldownSeconds(sign);
         if (cooldown > 0) {
-            fail(Component.translatable("screen.cobblemonranger.sign_cooldown", sign.displayName(), cooldown));
+            fail(Component.translatable("screen.cobblemonranger.sign_cooldown", sign.displayName(),
+                    RangerSign.formatTime(cooldown)));
             return;
         }
         matched = sign;
@@ -160,12 +166,14 @@ public class SignScreen extends Screen {
         }
 
         // The sign list: a small picture of each glyph, its name and whether it can be used.
-        float listX = padX + padSize + 16;
-        float rowHeight = Math.min(36, padSize / RangerSign.values().length);
+        float listLeft = padX + padSize + 16;
+        int perColumn = (RangerSign.values().length + columns - 1) / columns;
+        float rowHeight = Math.min(36, padSize / perColumn);
         float glyph = rowHeight - 8;
         for (int i = 0; i < RangerSign.values().length; i++) {
             RangerSign sign = RangerSign.values()[i];
-            float rowY = padY + i * rowHeight;
+            float rowY = padY + (i % perColumn) * rowHeight;
+            float listX = listLeft + (i / perColumn) * LIST_COLUMN_WIDTH;
             boolean unlocked = ClientRangerData.isUnlocked(sign);
             int cooldown = ClientRangerData.cooldownSeconds(sign);
             int color = !unlocked ? 0xFF505A64 : cooldown > 0 ? 0xFF8090A0 : sign == matched ? 0xFFFFD23F : 0xFF5BC0EB;
@@ -185,14 +193,16 @@ public class SignScreen extends Screen {
 
         for (int i = 0; i < RangerSign.values().length; i++) {
             RangerSign sign = RangerSign.values()[i];
-            float rowY = padY + i * rowHeight;
+            float rowY = padY + (i % perColumn) * rowHeight;
+            float listX = listLeft + (i / perColumn) * LIST_COLUMN_WIDTH;
             int textX = (int) (listX + glyph + 10);
             boolean unlocked = ClientRangerData.isUnlocked(sign);
             int cooldown = ClientRangerData.cooldownSeconds(sign);
             graphics.drawString(font, unlocked ? sign.displayName() : Component.literal("???"), textX,
                     (int) rowY + 4, unlocked ? 0xFFFFFFFF : 0xFF707A84, true);
             Component detail = !unlocked ? Component.translatable("screen.cobblemonranger.sign_rank", sign.rank())
-                    : cooldown > 0 ? Component.translatable("screen.cobblemonranger.sign_wait", cooldown)
+                    : cooldown > 0 ? Component.translatable("screen.cobblemonranger.sign_wait",
+                    RangerSign.formatTime(cooldown))
                     : sign.description();
             graphics.drawString(font, detail, textX, (int) rowY + 15, 0xFF8090A0, false);
         }

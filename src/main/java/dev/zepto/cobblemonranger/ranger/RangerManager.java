@@ -4,6 +4,7 @@ import dev.zepto.cobblemonranger.mission.Mission;
 import dev.zepto.cobblemonranger.network.RangerSyncPayload;
 import dev.zepto.cobblemonranger.registry.ModAttachments;
 import dev.zepto.cobblemonranger.signs.RangerSign;
+import dev.zepto.cobblemonranger.signs.SignWorldData;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -39,6 +40,9 @@ public final class RangerManager {
         long now = now(player);
         for (RangerSign sign : RangerSign.values()) {
             long readyAt = data.signCooldowns().getOrDefault(sign.id(), 0L);
+            if (sign.worldSign()) {
+                readyAt = Math.max(readyAt, SignWorldData.get(player.server).worldSignReadyAt());
+            }
             if (readyAt > now) {
                 cooldowns.put(sign.id(), (int) (readyAt - now));
             }

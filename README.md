@@ -17,13 +17,23 @@ A NeoForge 1.21.1 add-on for [Cobblemon](https://cobblemon.com) that brings the 
   heads home (despawns) automatically once your next battle is over. You can release friends at any time by sneaking
   and using the styler in the air, or with `/ranger release`. `/ranger friends` lists them.
 - **Poké Assists.** During a capture, every friend (and your Partner Pokémon) shows up in a bar under the arena.
-  Click one or press its number to call for help; the effect depends on its type. Fire, Electric and Ice stun the
-  target, Grass and Bug slow it, Water washes away its attacks, Psychic, Ghost and Dark stop it attacking, Poison,
-  Fairy and Dragon make loops stronger, Flying blows attacks away, and the rest give the friendship gauge a boost.
-  A friend heads home after assisting; the Partner Pokémon can help once per capture and stays.
+  Click one or press its number to call for help. Every type has its own effect:
+  Normal makes the line 50% longer; Fire traps the target in a ring of flames; Water lets you blow a bubble (hold
+  still to grow it, flick to launch it) that traps the target for longer the bigger it is; Grass grows a patch of tall
+  grass that slows it; Electric recharges the styler; Ice turns your strokes into ice walls for a few seconds and
+  freezes the target if you box it in; Ground turns your next loop into quicksand it can't leave; Rock turns your next
+  stroke into a boulder wall it can't cross; Flying blows attacks away and pins it in a whirlwind; Bug leaves a sticky
+  web; Psychic slows it and its attacks; Ghost sends it cowering in a corner; Dark makes its attacks miss; Poison
+  makes the gauge fill by itself; Fairy makes the next loops count double; Dragon gives a big chunk of friendship;
+  Steel makes the line unbreakable for a while; and Fighting blocks the next hit and stuns the target.
+  Assists that act on the target follow the type chart: super effective ones are 50% stronger, resisted ones weaker,
+  and one the target is immune to does nothing. Electric, Normal, Steel and Fairy help you, so they always work.
+  A friend heads home after assisting.
 - **Partner Pokémon.** Send out one of your own Pokémon and use the styler on it to make it your Partner Pokémon.
-  While it is in your party it follows you around (and is sent back out after battles and when you log in), makes
-  every Poké Assist 50% stronger, helps with field moves without leaving, and gains friendship from captures.
+  While it is in your party it follows you around (and is sent back out after battles and when you log in), helps
+  with field moves without leaving, and gains friendship from captures. Its own Poké Assist is 50% stronger than a
+  friend's, but first it has to be charged: every loop you draw around a wild Pokémon adds to its meter, carried over
+  between captures, and it is ready at 10. Using it empties the meter; picking a new partner starts from zero.
   `/ranger partner` shows it and `/ranger partner clear` removes it.
 - **Field Moves.** Use the styler on an obstacle and a friend or your Partner Pokémon clears it: **Cut** fells a whole
   tree or clears leaves, vines and cobwebs (Grass, Bug, Steel or Dark types); **Rock Smash** breaks a 3x3x3 chunk of
@@ -49,10 +59,15 @@ A NeoForge 1.21.1 add-on for [Cobblemon](https://cobblemon.com) that brings the 
   `/ranger setrank <1-10> [players]`.
 - **Ranger Signs.** Press G (rebindable) with a styler in your inventory and draw a sign in one stroke to call a
   legendary Pokémon. Signs unlock as your rank goes up and cost 10 styler energy: Celebi (circle, rank 1) makes
-  plants grow, Suicune (wave, rank 2) heals you and your party, Entei (triangle, rank 3) burns hostile mobs, Raikou
-  (lightning bolt, rank 4) strikes them with lightning, Latios (V, rank 5) flies you home, and Groudon (M, rank 6)
-  clears the weather. Each has its own cooldown. The legendary only appears for a few seconds and can't be caught
-  or battled.
+  plants grow, Suicune (wave, rank 2) heals you and your party, Entei (triangle, rank 3) cooks and smelts dropped
+  items lying nearby (your inventory is left alone), Raikou (lightning bolt, rank 4) makes every wild Pokémon within
+  64 blocks glow for a minute and names any shinies, Latios (V, rank 5) flies you home, Groudon (M, rank 6) clears
+  the weather, Kyogre (spiral, rank 7) brings rain, Cresselia (crescent, rank 8) ends the night, Darkrai (star,
+  rank 9) brings the night, and Rayquaza (S drawn upwards, rank 10) launches you into the sky to glide down. Each has
+  its own cooldown. The weather and time signs (Groudon, Kyogre, Cresselia, Darkrai) wait an hour per player, and
+  once anyone uses one, nobody in the world can use any of them for 20 minutes (`worldSignPersonalCooldownMinutes`
+  and `worldSignSharedCooldownMinutes` in the server config). The legendary only appears for a few seconds and
+  can't be caught or battled.
 - **Styler energy** is the styler's durability. It recharges slowly while carried and can be topped up with
   redstone at an anvil. Stylers never break; an empty one just can't start a capture.
 - **Upgrade modules** (Energy, Line Length, Loop Power) can be found in structure chests (dungeons, mineshafts,

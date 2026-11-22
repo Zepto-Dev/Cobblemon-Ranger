@@ -26,25 +26,36 @@ A captured Pokémon joins your party as a temporary **friend** so it can battle 
 
 ## ✨ Poké Assists
 
-During a capture, your friends and your Partner Pokémon appear in a bar under the arena. Click one, or press its number, to call for help. What it does depends on its type:
+During a capture, your friends and your Partner Pokémon appear in a bar under the arena. Click one, or press its number, to call for help. Every type has its own effect:
 
 | Type | Effect |
 |---|---|
-| Fire, Electric, Ice | Stuns the target |
-| Grass, Bug | Slows it down |
-| Water | Washes away its attacks |
-| Psychic, Ghost, Dark | Stops it attacking |
-| Poison, Fairy, Dragon | Makes your loops stronger |
-| Flying | Blows its attacks away |
-| Everything else | Gives the friendship gauge a boost |
+| Normal | The capture line gets 50% longer |
+| Fire | A ring of flames traps the target |
+| Water | Hold still to blow a bubble, flick to launch it. Bigger bubbles trap the target for longer |
+| Grass | Tall grass sprouts and slows the target to a crawl |
+| Electric | Recharges your styler |
+| Ice | Your strokes become ice walls. Box the target in to freeze it |
+| Ground | Your next loop becomes quicksand the target can't leave |
+| Rock | Your next stroke becomes a boulder wall the target can't cross |
+| Flying | Blows attacks away and pins the target in a whirlwind |
+| Bug | A sticky web holds the target whenever it touches it |
+| Psychic | The target and its attacks slow down |
+| Ghost | The target runs to a corner and cowers |
+| Dark | The target can't see your line, so its attacks miss |
+| Poison | The friendship gauge fills by itself |
+| Fairy | Your next loops count double |
+| Dragon | A big burst of friendship |
+| Steel | Your line can't be broken for a while |
+| Fighting | Blocks the next hit and stuns the target |
 
-A friend goes back to the wild after it assists. Your Partner Pokémon can help once per capture and stays with you.
+Type matchups matter: an assist the target is weak to works better, one it resists works less, and one it's immune to does nothing. A friend goes back to the wild after it assists.
 
 ![Poké Assist](https://raw.githubusercontent.com/Zepto-Dev/Cobblemon-Ranger/main/curseforge/screenshots/05-poke-assist.png)
 
 ## ⭐ Partner Pokémon
 
-Send out one of your own Pokémon and use the styler on it to make it your **Partner Pokémon**. While it's in your party it follows you around, makes every Poké Assist 50% stronger, helps with field moves without leaving, and gains friendship from your captures.
+Send out one of your own Pokémon and use the styler on it to make it your **Partner Pokémon**. While it's in your party it follows you around, helps with field moves without leaving, and gains friendship from your captures. Its own Poké Assist is 50% stronger than a friend's, but you charge it first: every loop you draw around a wild Pokémon fills its meter, even across captures, and it's ready at 10 loops.
 
 ## 🌲 Field Moves
 
@@ -79,12 +90,16 @@ Press **G** with a styler in your inventory and draw a sign in one stroke to cal
 |---|---|---|---|
 | Celebi | Circle | 1 | Makes nearby plants grow |
 | Suicune | Wave | 2 | Heals you and your party |
-| Entei | Triangle | 3 | Burns hostile mobs |
-| Raikou | Lightning bolt | 4 | Strikes hostile mobs with lightning |
+| Entei | Triangle | 3 | Cooks and smelts dropped items nearby |
+| Raikou | Lightning bolt | 4 | Wild Pokémon nearby glow, and shinies are named |
 | Latios | V | 5 | Flies you home |
 | Groudon | M | 6 | Clears the weather |
+| Kyogre | Spiral | 7 | Brings rain |
+| Cresselia | Crescent | 8 | Ends the night |
+| Darkrai | Star | 9 | Brings the night |
+| Rayquaza | S, drawn upwards | 10 | Launches you into the sky |
 
-Each sign costs 10 styler energy and has its own cooldown.
+Each sign costs 10 styler energy and has its own cooldown. The weather and time signs also share a world-wide cooldown, so players on a server can't keep flipping the weather.
 
 ![Ranger Sign](https://raw.githubusercontent.com/Zepto-Dev/Cobblemon-Ranger/main/curseforge/screenshots/13-ranger-sign.png)
 

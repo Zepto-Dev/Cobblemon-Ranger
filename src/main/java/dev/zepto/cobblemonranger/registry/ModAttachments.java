@@ -2,6 +2,7 @@ package dev.zepto.cobblemonranger.registry;
 
 import com.mojang.serialization.Codec;
 import dev.zepto.cobblemonranger.CobblemonRanger;
+import dev.zepto.cobblemonranger.capture.PartnerCharge;
 import dev.zepto.cobblemonranger.ranger.RangerData;
 import net.neoforged.neoforge.attachment.AttachmentType;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -19,6 +20,10 @@ public final class ModAttachments {
     /** Game time after which Rangers offer this player a new mission. */
     public static final Supplier<AttachmentType<Long>> NEXT_MISSION = ATTACHMENTS.register("next_mission",
             () -> AttachmentType.builder(() -> 0L).serialize(Codec.LONG).copyOnDeath().build());
+
+    /** Charge of the Partner Pokémon's own Poké Assist. */
+    public static final Supplier<AttachmentType<PartnerCharge>> PARTNER_CHARGE = ATTACHMENTS.register("partner_charge",
+            () -> AttachmentType.builder(() -> PartnerCharge.EMPTY).serialize(PartnerCharge.CODEC).copyOnDeath().build());
 
     private ModAttachments() {
     }

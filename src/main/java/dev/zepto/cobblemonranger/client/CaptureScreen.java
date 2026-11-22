@@ -677,14 +677,15 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
 
         // Message box near the bottom of the screen: the controls at first, then attack warnings.
         Component message = null;
-        if (game.phase() == CaptureGame.Phase.INTRO
-                || (game.phase() == CaptureGame.Phase.PLAYING && game.phaseTime() < HINT_TIME)) {
-            message = Component.translatable(payload.assists().isEmpty()
-                    ? "screen.cobblemonranger.hint" : "screen.cobblemonranger.hint_assist");
-        } else if (game.phase() == CaptureGame.Phase.PLAYING && game.drawMode() != CaptureGame.DrawMode.NONE) {
+        boolean playing = game.phase() == CaptureGame.Phase.PLAYING;
+        if (playing && game.drawMode() != CaptureGame.DrawMode.NONE) {
+            // An assist waiting to be drawn says how, even over the opening hint.
             message = Component.translatable("screen.cobblemonranger.draw."
                     + game.drawMode().name().toLowerCase(Locale.ROOT));
-        } else if (game.phase() == CaptureGame.Phase.PLAYING && game.isWindingUp()) {
+        } else if (game.phase() == CaptureGame.Phase.INTRO || (playing && game.phaseTime() < HINT_TIME)) {
+            message = Component.translatable(payload.assists().isEmpty()
+                    ? "screen.cobblemonranger.hint" : "screen.cobblemonranger.hint_assist");
+        } else if (playing && game.isWindingUp()) {
             message = Component.translatable("screen.cobblemonranger.charging", payload.name());
         }
         if (message != null) {
@@ -1076,7 +1077,7 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
         if (mode == CaptureGame.DrawMode.BOULDER || mode == CaptureGame.DrawMode.ICE) {
             // Ink left for walls, as a bar along the top of the arena.
             float barWidth = w * 0.3f;
-            float left = arenaX + (w - barWidth) / 2, top = arenaY + 22;
+            float left = arenaX + (w - barWidth) / 2, top = arenaY + 46;
             shapes.rect(left - 1, top - 1, left + barWidth + 1, top + 4, 0xC0141826);
             shapes.rect(left, top, left + barWidth * game.inkFraction(), top + 3,
                     mode == CaptureGame.DrawMode.ICE ? 0xFF9FDCF2 : 0xFF9C9284);

@@ -36,7 +36,7 @@ public final class CaptureGame {
     private static final float BUBBLE_FLIGHT_TIME = 4f;
     private static final float BUBBLE_SPEED = 150f;
     /** How far the cursor moves from where the bubble started to launch it. */
-    private static final float BUBBLE_FLICK = 14f;
+    private static final float BUBBLE_FLICK = 10f;
     private static final float ASSIST_GAUGE_CAP = 0.95f;
     private static final float WALL_THICKNESS = 4f;
     /** Ice enclosure test grid, in arena units per cell. */

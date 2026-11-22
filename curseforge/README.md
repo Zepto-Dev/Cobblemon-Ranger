@@ -7,7 +7,7 @@ Everything needed for the Cobblemon Ranger project page on CurseForge.
 | `summary.txt` | **Summary** field (201 characters) |
 | `description.md` | **Description**, with the editor switched to Markdown |
 | `description.html` | Same description as HTML, for the WYSIWYG editor's source view |
-| `logo.png` | **Project avatar** (400×400) |
+| `logo.png` | **Project avatar** (400×400), drawn by `tools/logo.py` |
 | `screenshots/*.png` | **Images** tab (1920×1080) |
 
 The description embeds screenshots from this folder through `raw.githubusercontent.com/.../main/...`, so they

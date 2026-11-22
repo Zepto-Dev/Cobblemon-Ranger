@@ -1,13 +1,13 @@
-"""Draws the item textures (styler layers and upgrade modules) as 16x16 pixel art.
+"""Draws the item textures (styler layers and upgrade modules) and the Surfing effect icon as pixel art.
 
 Run from the repository root: python3 tools/item_textures.py
 """
-import math
 import os
 
 from PIL import Image
 
-OUT = "src/main/resources/assets/cobblemonranger/textures/item"
+ROOT = "src/main/resources/assets/cobblemonranger/textures"
+OUT = ROOT + "/item"
 
 OUTLINE = (26, 28, 44)
 
@@ -16,156 +16,129 @@ def hexrgb(value):
     return ((value >> 16) & 255, (value >> 8) & 255, value & 255)
 
 
-def save(pixels, name):
-    img = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+def save(pixels, name, size=16, out=OUT):
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     for (x, y), color in pixels.items():
-        if 0 <= x < 16 and 0 <= y < 16:
+        if 0 <= x < size and 0 <= y < size:
             img.putpixel((x, y), color + (255,) if len(color) == 3 else color)
-    img.save(os.path.join(OUT, name + ".png"))
+    img.save(os.path.join(out, name + ".png"))
 
 
-def neighbours(x, y):
-    return [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
+def paint(rows, palette, ox=0, oy=0):
+    """ASCII sprite to pixels: each character is a key into palette, '.' is transparent."""
+    px = {}
+    for y, row in enumerate(rows):
+        for x, ch in enumerate(row):
+            if ch != ".":
+                px[(ox + x, oy + y)] = palette[ch]
+    return px
 
 
 # ---------------------------------------------------------------- styler
-# Layer 0 is the dyeable shell, drawn in greys so the item tint gives the colour. Layer 1 is everything that keeps its
-# own colour: outline, screen, lens, highlight and the status light.
+# A red handheld after the first Ranger games' Capture Styler: rounded body, yellow antenna on the top right, an oval
+# emblem with a blue gem and a dark grip down the right side. Digits are the dyeable shell (layer 0), drawn in greys so
+# the item tint gives the colour; letters keep their own colour (layer 1).
+
+STYLER = [
+    "...........oo...",
+    "..........oYdo..",
+    "....oooooooydo..",
+    "...o44443oyyo...",
+    "...o43333ooo3o..",
+    "...o3ooooo33ho..",
+    "...o3oSSso32ho..",
+    "...o3oBbso32ho..",
+    "...o3ooooo22ho..",
+    "...o33333322ho..",
+    "...o33222222ho..",
+    "...o22111122ho..",
+    "...o22222222go..",
+    "....o2222221o...",
+    ".....oooooooo...",
+    "................",
+]
+SHELL = {"4": (255, 255, 255), "3": (226, 226, 226), "2": (190, 190, 190), "1": (150, 150, 150)}
+FIXED = {"o": OUTLINE, "y": hexrgb(0xFFD23F), "Y": hexrgb(0xFFF08A), "d": hexrgb(0xD89A12), "g": hexrgb(0x1E1E28),
+         "h": hexrgb(0x3A3A4C), "S": hexrgb(0xE8ECF2), "s": hexrgb(0xA8B0BE), "B": hexrgb(0x9AD4FF), "b": hexrgb(0x2A6AE0)}
+
 
 def styler():
-    """A round styler on a wrist band, seen from the front."""
-    cx, cy, radius = 8.0, 6.6, 6.4
-    disc = {(x, y) for x in range(16) for y in range(16) if math.hypot(x + 0.5 - cx, y + 0.5 - cy) <= radius}
-    band = set()
-    for x in range(16):
-        for y in range(16):
-            e = ((x + 0.5 - 8.0) / 7.9) ** 2 + ((y + 0.5 - 10.4) / 5.0) ** 2
-            if 0.3 <= e <= 1.0 and y >= 8:
-                band.add((x, y))
-    body = disc | band
-    disc_outline = {p for p in disc if any(n not in disc for n in neighbours(*p))}
-    band_outline = {p for p in band - disc if any(n not in band for n in neighbours(*p))}
-    outline = disc_outline | band_outline
-
-    shell, top = {}, {}
-    for (x, y) in body - outline:
-        if (x, y) in disc:
-            d = math.hypot(x + 0.5 - cx, y + 0.5 - cy)
-            if d < radius - 2.6:
-                continue  # screen, drawn on layer 1
-            nx, ny = (x + 0.5 - cx) / d, (y + 0.5 - cy) / d
-            light = -(nx * 0.8 + ny) / 1.28
-        else:
-            light = 0.3 if y <= 11 else -0.3 if y <= 13 else -0.8
-            if x <= 2 or x >= 13:
-                light -= 0.4
-        shade = 255 if light > 0.5 else 222 if light > 0.0 else 186 if light > -0.55 else 146
-        shell[(x, y)] = (shade, shade, shade)
-
-    for p in outline:
-        top[p] = OUTLINE
-
-    screen_dark, screen_mid = hexrgb(0x1E2F4A), hexrgb(0x2B4C73)
-    lens, lens_light, white = hexrgb(0x3FCBFF), hexrgb(0xA8F0FF), (255, 255, 255)
-    for (x, y) in disc - outline:
-        d = math.hypot(x + 0.5 - cx, y + 0.5 - cy)
-        if d >= radius - 2.6:
-            continue
-        if d >= radius - 3.3:
-            top[(x, y)] = OUTLINE  # bezel between shell and glass
-        elif d < 1.8:
-            top[(x, y)] = lens_light if (x + 0.5 < cx and y + 0.5 < cy) else lens
-        else:
-            top[(x, y)] = screen_mid if (x + y) < cx + cy - 1 else screen_dark
-    # Glass glint, capture lights on the rim and a clasp on the band.
-    top[(6, 4)] = white
-    top[(7, 4)] = white
-    top[(6, 5)] = white
-    top[(8, 1)] = hexrgb(0xFFD23F)
-    top[(13, 6)] = hexrgb(0xFF5A3C)
-    top[(2, 6)] = hexrgb(0x5BE07A)
-    for x in (7, 8):
-        top[(x, 14)] = hexrgb(0x8B93A8)
+    shell = paint([row.translate(str.maketrans({c: "." for c in FIXED})) for row in STYLER], SHELL)
+    top = paint([row.translate(str.maketrans({c: "." for c in SHELL})) for row in STYLER], FIXED)
     return shell, top
 
 
 # ---------------------------------------------------------------- modules
-# A cartridge that slots into the styler: coloured case, gold contacts and an icon window.
+# A circuit chip that slots into the styler: grey metal body, gold pins down both sides and a coloured core showing
+# the upgrade's icon. '#' marks the 6x6 core, filled from CORES.
 
-ICONS = {
-    "energy": [  # lightning bolt
-        "...YY.",
-        "..YY..",
-        ".YYYY.",
-        "...YY.",
-        "..YY..",
-        ".Y....",
-    ],
-    "line": [  # a drawn loop
-        "..CCC.",
-        ".C...C",
-        "C..C.C",
-        "C...C.",
-        ".CCC..",
-        "...C..",
-    ],
-    "power": [  # burst star
-        "..W...",
-        "..W...",
-        "WWWWW.",
-        ".WWW..",
-        ".W.W..",
-        "W...W.",
-    ],
+CHIP = [
+    "................",
+    "...aaaaaaaaaa...",
+    "..abcbbbbbbbba..",
+    ".dabbbbbbbbbead.",
+    "..abaaaaaaaaea..",
+    ".daba######aead.",
+    "..aba######aea..",
+    ".daba######aead.",
+    "..aea######aja..",
+    ".daea######ajad.",
+    "..aea######aja..",
+    ".daeaaaaaaaajad.",
+    "..aeejjjjjjjja..",
+    "..ajjjjjjjjjja..",
+    "...aaaaaaaaaa...",
+    "................",
+]
+# f, g, i: light, mid and dark shades of the module's colour; h: the icon; c: a glint.
+CORES = {
+    "energy": ["cffffg", "fffhhg", "fghhgg", "ghhhhi", "gghhii", "ghhiii"],  # lightning bolt
+    "line": ["cffffg", "ffhhgg", "fhgghg", "ghghhi", "gghhii", "ggiiii"],  # a drawn loop
+    "power": ["cffffg", "fffhgg", "fghhhg", "ggghgi", "gghihi", "ggiiii"],  # burst
 }
-ICON_COLORS = {"Y": hexrgb(0xFFE14D), "C": hexrgb(0x7DF3FF), "W": hexrgb(0xFFF1A8)}
-
+CHIP_COLORS = {"a": hexrgb(0x1A1C2C), "b": hexrgb(0xC9CED8), "c": (255, 255, 255), "d": hexrgb(0xFFD23F),
+               "e": hexrgb(0xA2A9B8), "j": hexrgb(0x6F7789)}
 CASES = {
-    "energy": (hexrgb(0x8EE55A), hexrgb(0x4CB83A), hexrgb(0x2D7A2E)),
-    "line": (hexrgb(0x7CC8FF), hexrgb(0x3B8FE0), hexrgb(0x2459A8)),
-    "power": (hexrgb(0xFF8A6B), hexrgb(0xE5483A), hexrgb(0x9E2A2F)),
+    "energy": {"f": hexrgb(0x8EE55A), "g": hexrgb(0x4CB83A), "i": hexrgb(0x2D7A2E), "h": hexrgb(0xFFE14D)},
+    "line": {"f": hexrgb(0x7CC8FF), "g": hexrgb(0x3B8FE0), "i": hexrgb(0x2459A8), "h": hexrgb(0x7DF3FF)},
+    "power": {"f": hexrgb(0xFF8A6B), "g": hexrgb(0xE5483A), "i": hexrgb(0x9E2A2F), "h": hexrgb(0xFFF1A8)},
 }
 
 
 def module(kind):
-    light, mid, dark = CASES[kind]
-    px = {}
-    left, right, top_row, bottom = 2, 13, 1, 12
-    case = {(x, y) for x in range(left, right + 1) for y in range(top_row, bottom + 1)}
-    for corner in [(left, top_row), (right, top_row), (left, bottom), (right, bottom)]:
-        case.discard(corner)
-    for p in case:
-        x, y = p
-        if any(n not in case for n in neighbours(x, y)):
-            px[p] = OUTLINE
-        elif x == left + 1 or y == top_row + 1:
-            px[p] = light
-        elif x == right - 1 or y == bottom - 1:
-            px[p] = dark
-        else:
-            px[p] = mid
-    # Gold contacts under the case.
-    for x in range(4, 12):
-        px[(x, 13)] = OUTLINE
-        px[(x, 14)] = OUTLINE if x in (4, 11) else (hexrgb(0xFFD23F) if x % 2 == 1 else hexrgb(0xB07A1E))
-    for x in range(5, 11):
-        px[(x, 15)] = OUTLINE
-    # Icon window.
-    for x in range(4, 12):
-        for y in range(3, 11):
-            px[(x, y)] = OUTLINE if x in (4, 11) or y in (3, 10) else hexrgb(0x1E2F4A)
-    for row, line in enumerate(ICONS[kind]):
-        for col, ch in enumerate(line):
-            if ch != ".":
-                px[(5 + col, 4 + row)] = ICON_COLORS[ch]
-    # Shine on the case corner.
-    px[(3, 2)] = (255, 255, 255)
-    return px
+    core = iter(CORES[kind])
+    rows = [row.replace("######", next(core)) if "#" in row else row for row in CHIP]
+    return paint(rows, {**CHIP_COLORS, **CASES[kind]})
+
+
+# ---------------------------------------------------------------- Surfing effect icon (18x18)
+# A curling blue wave with foam on the crest.
+
+WAVE = [
+    "......aaaaaa......",
+    "....aaddddeeaa....",
+    "...addccccddeea...",
+    "..adccaaaaaacdea..",
+    "..accaa.....aaea..",
+    ".adca.........a...",
+    ".acca.............",
+    ".acccaa...........",
+    "adccccdaa.........",
+    "acccccccdaaa......",
+    "abccccccccddaaa...",
+    "abbcccccccccccdaa.",
+    "abbbbcccccccccccda",
+    "aabbbbbbbbbbbbbbba",
+    ".aaaaaaaaaaaaaaaa.",
+]
+WAVE_COLORS = {"a": hexrgb(0x0E2A5A), "b": hexrgb(0x1F6FD0), "c": hexrgb(0x3FA0F0), "d": hexrgb(0x9AD4FF),
+               "e": (255, 255, 255)}
 
 
 if __name__ == "__main__":
     shell, screen = styler()
     save(shell, "styler_shell")
     save(screen, "styler_screen")
-    for kind in ICONS:
+    for kind in CORES:
         save(module(kind), "styler_%s_module" % kind)
+    save(paint(WAVE, WAVE_COLORS, 0, 2), "surfing", 18, ROOT + "/mob_effect")

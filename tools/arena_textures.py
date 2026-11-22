@@ -187,8 +187,10 @@ SPRITES = [
     ("bush", G, ["..cddc..", ".cdddbc.", "cddbbbbc", "cdbbbbba", ".bbbbaa.", "..aaaa.."]),
     ("leaves", G, ["..c.....", ".cbc..c.", "cbbbccbc", ".cbbbbc.", "..ab.ba.", "........"]),
     ("reeds", G, ["c..c..c", "b.cb.cb", "bcb.cb.", "bb.bb.b", "ab.ab.a"]),
-    ("lily", [hexrgb(0x2E6B2A), hexrgb(0x3F8F38), hexrgb(0x5DB04F), hexrgb(0xF4A6C8)],
-     ["..bbbb..", ".bccbbb.", "bccbbd.b", "bcbbbb.b", ".abbbba.", "..aaaa.."]),
+    ("lily", [hexrgb(0x1E4A1E), hexrgb(0x5DB04F), hexrgb(0xFFD6E8), hexrgb(0xFFF0A8), hexrgb(0xE0A424),
+              hexrgb(0x9AD87A), hexrgb(0x3F8F38), hexrgb(0xD8609A), hexrgb(0xF4A6C8), hexrgb(0x2E6B2A)],
+     [".....aaaa.....", "..aaabcdecaa..", ".afbbghiihgga.", "abbjjjghhajgga", "agggjjga..aaaa", ".agjgggjaa....",
+      "..aaagjjjaaa..", ".....aaaa....."]),  # a lily pad with a slit, and a pink water lily on it
     # row 1: flowers and stones
     ("flower_red", [hexrgb(0xC0303A), hexrgb(0xF2545B), hexrgb(0xFFE07A), hexrgb(0x3E8A3A)],
      [".bb.", "bccb", ".aa.", "..d.", ".dd."]),

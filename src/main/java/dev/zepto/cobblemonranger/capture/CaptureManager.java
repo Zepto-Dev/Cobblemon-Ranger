@@ -6,6 +6,7 @@ import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import dev.zepto.cobblemonranger.CobblemonRanger;
 import dev.zepto.cobblemonranger.item.StylerItem;
+import dev.zepto.cobblemonranger.item.StylerProgress;
 import dev.zepto.cobblemonranger.mission.MissionManager;
 import dev.zepto.cobblemonranger.network.CaptureResultPayload;
 import dev.zepto.cobblemonranger.network.OpenCapturePayload;
@@ -119,6 +120,9 @@ public final class CaptureManager {
             player.displayClientMessage(Component.translatable("message.cobblemonranger.no_energy"), true);
             return;
         }
+        if (tooHighLevel(player, pokemon, styler, entity.getName())) {
+            return;
+        }
         PlayerPartyStore party = Cobblemon.INSTANCE.getStorage().getParty(player);
         if (party.getFirstAvailablePosition() == null) {
             player.displayClientMessage(Component.translatable("message.cobblemonranger.party_full"), true);
@@ -158,6 +162,18 @@ public final class CaptureManager {
                 stylerItem.getColor().getTextureDiffuseColor(),
                 assists,
                 partner != null ? PARTNER_ASSIST_STRENGTH : 1f));
+    }
+
+    /** Stylers can only capture Pok\u00e9mon up to a level that rises with the styler's own level. */
+    private static boolean tooHighLevel(ServerPlayer player, Pokemon pokemon, ItemStack styler, Component name) {
+        StylerProgress progress = StylerProgress.get(styler);
+        int cap = progress.captureLevelCap();
+        if (pokemon.getLevel() <= cap) {
+            return false;
+        }
+        player.displayClientMessage(Component.translatable("message.cobblemonranger.too_high_level", name,
+                pokemon.getLevel(), progress.level(), cap), false);
+        return true;
     }
 
     private static OpenCapturePayload.Assist assistOf(Pokemon pokemon, boolean partner) {
@@ -226,6 +242,9 @@ public final class CaptureManager {
                 || entity.level() != player.level() || entity.distanceToSqr(player) > MAX_DISTANCE_SQR) {
             player.displayClientMessage(Component.translatable("message.cobblemonranger.capture_escaped",
                     entity.getName()), false);
+            return;
+        }
+        if (tooHighLevel(player, pokemon, styler, entity.getName())) {
             return;
         }
         PlayerPartyStore party = Cobblemon.INSTANCE.getStorage().getParty(player);

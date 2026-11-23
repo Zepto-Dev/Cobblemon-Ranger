@@ -50,13 +50,31 @@ public final class CaptureManager {
     private static final int MIN_CAPTURE_TICKS = 40;
     private static final int SESSION_TIMEOUT_TICKS = 20 * 60 * 5;
     private static final double MAX_DISTANCE_SQR = 24 * 24;
-    /** Poké Assists are this much stronger when the player has a Partner Pokémon in their party. */
+    /** The Partner Pokémon's own Poké Assist is this much stronger than a friend's. */
     private static final float PARTNER_ASSIST_STRENGTH = 1.5f;
+    /**
+     * Most styler energy one Electric assist can put back, as a share of the maximum: the 20% it gives, times the
+     * Partner's strength, with some slack for rounding.
+     */
+    private static final float MAX_CHARGE_PER_ASSIST = 0.2f * PARTNER_ASSIST_STRENGTH + 0.02f;
 
     private static final Map<UUID, Session> SESSIONS = new HashMap<>();
 
     private record Session(UUID entityUuid, int entityId, InteractionHand hand, long startTick, ServerLevel level,
-                           boolean wasNoAi, Set<UUID> assistsUsed) {
+                           boolean wasNoAi, Set<UUID> assistsUsed, AssistLog log) {
+    }
+
+    /** What the assists in a capture did, to check the client's result against. */
+    private static final class AssistLog {
+        final UUID partnerId;
+        final int partnerCharge;
+        boolean partnerUsed;
+        int electricUses;
+
+        AssistLog(UUID partnerId, int partnerCharge) {
+            this.partnerId = partnerId;
+            this.partnerCharge = partnerCharge;
+        }
     }
 
     private CaptureManager() {
@@ -130,8 +148,10 @@ public final class CaptureManager {
         }
 
         ServerLevel level = player.serverLevel();
+        Pokemon partner = PartnerManager.getPartner(player);
+        int partnerCharge = partner == null ? 0 : PartnerManager.charge(player, partner);
         SESSIONS.put(player.getUUID(), new Session(entity.getUUID(), entity.getId(), hand, level.getGameTime(), level,
-                entity.isNoAi(), new HashSet<>()));
+                entity.isNoAi(), new HashSet<>(), new AssistLog(partner == null ? null : partner.getUuid(), partnerCharge)));
         // Through Mob: Cobblemon 1.7 dropped the PokemonNavigation override, so a direct call breaks the 1.6.1-built jar.
         ((Mob) entity).getNavigation().stop();
         entity.setNoAi(true);
@@ -139,7 +159,6 @@ public final class CaptureManager {
 
         StylerItem stylerItem = (StylerItem) styler.getItem();
         List<OpenCapturePayload.Assist> assists = new ArrayList<>();
-        Pokemon partner = PartnerManager.getPartner(player);
         if (partner != null && !partner.isFainted()) {
             assists.add(assistOf(partner, true));
         }
@@ -152,6 +171,7 @@ public final class CaptureManager {
                 entity.getId(),
                 entity.getName(),
                 pokemon.getPrimaryType().getName(),
+                pokemon.getSecondaryType() == null ? "" : pokemon.getSecondaryType().getName(),
                 pokemon.getSpecies().getCatchRate(),
                 pokemon.getLevel(),
                 pokemon.getShiny(),
@@ -161,7 +181,9 @@ public final class CaptureManager {
                 StylerItem.loopPower(styler),
                 stylerItem.getColor().getTextureDiffuseColor(),
                 assists,
-                partner != null ? PARTNER_ASSIST_STRENGTH : 1f));
+                PARTNER_ASSIST_STRENGTH,
+                partnerCharge,
+                PartnerCharge.FULL));
     }
 
     /** Stylers can only capture Pok\u00e9mon up to a level that rises with the styler's own level. */
@@ -182,27 +204,43 @@ public final class CaptureManager {
     }
 
     /**
-     * A friend lending a Poké Assist goes back to the wild straight away; the Partner Pokémon can help once per
-     * capture and stays.
+     * A friend lending a Poké Assist goes back to the wild straight away. The Partner Pokémon stays, and can help once
+     * its charge is full: loops from earlier captures plus the ones drawn so far in this one.
      */
     public static void handleAssist(ServerPlayer player, UseAssistPayload payload) {
         Session session = SESSIONS.get(player.getUUID());
         if (session == null || session.entityId() != payload.entityId()
-                || !session.assistsUsed().add(payload.pokemonId())) {
+                || session.assistsUsed().contains(payload.pokemonId())) {
             return;
         }
+        AssistLog log = session.log();
         Pokemon partner = PartnerManager.getPartner(player);
         if (partner != null && partner.getUuid().equals(payload.pokemonId())) {
+            if (!partner.getUuid().equals(log.partnerId)
+                    || log.partnerCharge + Math.max(0, payload.loops()) < PartnerCharge.FULL) {
+                return;
+            }
+            session.assistsUsed().add(payload.pokemonId());
+            log.partnerUsed = true;
+            countAssist(log, partner);
             MissionManager.onAssist(player);
             return;
         }
         for (Pokemon friend : FriendManager.getFriends(player)) {
             if (friend.getUuid().equals(payload.pokemonId())) {
+                session.assistsUsed().add(payload.pokemonId());
+                countAssist(log, friend);
                 FriendManager.release(player, friend, null, Component.translatable(
                         "message.cobblemonranger.assist_used", friend.getSpecies().getTranslatedName()));
                 MissionManager.onAssist(player);
                 return;
             }
+        }
+    }
+
+    private static void countAssist(AssistLog log, Pokemon helper) {
+        if ("electric".equals(helper.getPrimaryType().getName())) {
+            log.electricUses++;
         }
     }
 
@@ -215,11 +253,26 @@ public final class CaptureManager {
         Entity target = session.level().getEntity(session.entityUuid());
         unfreeze(target, session.wasNoAi());
 
+        AssistLog log = session.log();
+        Pokemon partner = PartnerManager.getPartner(player);
+        if (partner != null && partner.getUuid().equals(log.partnerId)) {
+            // Nobody draws more than about two loops a second, which caps what a forged result could claim.
+            long seconds = (session.level().getGameTime() - session.startTick()) / 20 + 1;
+            int loops = (int) Math.min(Math.max(0, result.chargeLoops()), seconds * 2);
+            PartnerManager.setCharge(player, partner, (log.partnerUsed ? 0 : log.partnerCharge) + loops);
+        }
+
         ItemStack styler = player.getItemInHand(session.hand());
         if (!(styler.getItem() instanceof StylerItem)) {
             return;
         }
-        StylerItem.drainEnergy(styler, result.damage());
+        if (result.damage() >= 0) {
+            StylerItem.drainEnergy(styler, result.damage());
+        } else {
+            // Electric assists recharged the styler by more than the hits took.
+            int cap = (int) Math.ceil(log.electricUses * MAX_CHARGE_PER_ASSIST * styler.getMaxDamage());
+            StylerItem.restoreEnergy(styler, Math.min(cap, -result.damage()));
+        }
 
         switch (result.outcome()) {
             case STYLER_EMPTY -> player.displayClientMessage(

@@ -58,6 +58,10 @@ public class StylerItem extends Item {
         stack.setDamageValue(Math.min(stack.getMaxDamage(), stack.getDamageValue() + Math.max(0, amount)));
     }
 
+    public static void restoreEnergy(ItemStack stack, int amount) {
+        stack.setDamageValue(Math.max(0, stack.getDamageValue() - Math.max(0, amount)));
+    }
+
     /** Applies the stats component and keeps max energy in sync with the energy upgrade level. */
     public static void setStats(ItemStack stack, StylerStats stats) {
         stack.set(ModDataComponents.STYLER_STATS.get(), stats);

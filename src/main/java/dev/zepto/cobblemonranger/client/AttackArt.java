@@ -126,7 +126,7 @@ public record AttackArt(Element missile, Element particle, Blast blast, int colo
                 alpha);
     }
 
-    private static void draw(GuiGraphics graphics, ResourceLocation texture, int textureWidth, int textureHeight,
+    static void draw(GuiGraphics graphics, ResourceLocation texture, int textureWidth, int textureHeight,
                              int cell, int column, int row, float x, float y, float size, float angle, int tint,
                              float alpha) {
         graphics.setColor(((tint >> 16) & 0xFF) / 255f, ((tint >> 8) & 0xFF) / 255f, (tint & 0xFF) / 255f, alpha);

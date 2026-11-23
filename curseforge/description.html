@@ -17,7 +17,7 @@
 <h2>🤝 Friend Pokémon</h2>
 <p>A captured Pokémon joins your party as a temporary <strong>friend</strong> so it can battle with you. It returns to the wild by itself once your next battle is over. You can also send friends home at any time by sneaking and using the styler in the air, or with <code>/ranger release</code>.</p>
 <h2>✨ Poké Assists</h2>
-<p>During a capture, your friends and your Partner Pokémon appear in a bar under the arena. Click one, or press its number, to call for help. What it does depends on its type:</p>
+<p>During a capture, your friends and your Partner Pokémon appear in a bar under the arena. Click one, or press its number, to call for help. Every type has its own effect:</p>
 <table>
 <thead>
 <tr>
@@ -27,39 +27,83 @@
 </thead>
 <tbody>
 <tr>
-<td>Fire, Electric, Ice</td>
-<td>Stuns the target</td>
+<td>Normal</td>
+<td>The capture line gets 50% longer</td>
 </tr>
 <tr>
-<td>Grass, Bug</td>
-<td>Slows it down</td>
+<td>Fire</td>
+<td>A ring of flames traps the target</td>
 </tr>
 <tr>
 <td>Water</td>
-<td>Washes away its attacks</td>
+<td>Hold still to blow a bubble, flick to launch it. Bigger bubbles trap the target for longer</td>
 </tr>
 <tr>
-<td>Psychic, Ghost, Dark</td>
-<td>Stops it attacking</td>
+<td>Grass</td>
+<td>Tall grass sprouts and slows the target to a crawl</td>
 </tr>
 <tr>
-<td>Poison, Fairy, Dragon</td>
-<td>Makes your loops stronger</td>
+<td>Electric</td>
+<td>Recharges your styler</td>
+</tr>
+<tr>
+<td>Ice</td>
+<td>Your strokes become ice walls. Box the target in to freeze it</td>
+</tr>
+<tr>
+<td>Ground</td>
+<td>Your next loop becomes quicksand the target can't leave</td>
+</tr>
+<tr>
+<td>Rock</td>
+<td>Your next stroke becomes a boulder wall the target can't cross</td>
 </tr>
 <tr>
 <td>Flying</td>
-<td>Blows its attacks away</td>
+<td>Blows attacks away and pins the target in a whirlwind</td>
 </tr>
 <tr>
-<td>Everything else</td>
-<td>Gives the friendship gauge a boost</td>
+<td>Bug</td>
+<td>A sticky web holds the target whenever it touches it</td>
+</tr>
+<tr>
+<td>Psychic</td>
+<td>The target and its attacks slow down</td>
+</tr>
+<tr>
+<td>Ghost</td>
+<td>The target runs to a corner and cowers</td>
+</tr>
+<tr>
+<td>Dark</td>
+<td>The target can't see your line, so its attacks miss</td>
+</tr>
+<tr>
+<td>Poison</td>
+<td>The friendship gauge fills by itself</td>
+</tr>
+<tr>
+<td>Fairy</td>
+<td>Your next loops count double</td>
+</tr>
+<tr>
+<td>Dragon</td>
+<td>A big burst of friendship</td>
+</tr>
+<tr>
+<td>Steel</td>
+<td>Your line can't be broken for a while</td>
+</tr>
+<tr>
+<td>Fighting</td>
+<td>Blocks the next hit and stuns the target</td>
 </tr>
 </tbody>
 </table>
-<p>A friend goes back to the wild after it assists. Your Partner Pokémon can help once per capture and stays with you.</p>
+<p>Type matchups matter: an assist the target is weak to works better, one it resists works less, and one it's immune to does nothing. A friend goes back to the wild after it assists.</p>
 <p><img alt="Poké Assist" src="https://raw.githubusercontent.com/Zepto-Dev/Cobblemon-Ranger/main/curseforge/screenshots/05-poke-assist.png" /></p>
 <h2>⭐ Partner Pokémon</h2>
-<p>Send out one of your own Pokémon and use the styler on it to make it your <strong>Partner Pokémon</strong>. While it's in your party it follows you around, makes every Poké Assist 50% stronger, helps with field moves without leaving, and gains friendship from your captures.</p>
+<p>Send out one of your own Pokémon and use the styler on it to make it your <strong>Partner Pokémon</strong>. While it's in your party it follows you around, helps with field moves without leaving, and gains friendship from your captures. Its own Poké Assist is 50% stronger than a friend's, but you charge it first: every loop you draw around a wild Pokémon fills its meter, even across captures, and it's ready at 10 loops.</p>
 <h2>🌲 Field Moves</h2>
 <p>Use the styler on an obstacle and a friend or your partner clears it for you:</p>
 <ul>
@@ -104,13 +148,13 @@
 <td>Entei</td>
 <td>Triangle</td>
 <td>3</td>
-<td>Burns hostile mobs</td>
+<td>Cooks and smelts dropped items nearby</td>
 </tr>
 <tr>
 <td>Raikou</td>
 <td>Lightning bolt</td>
 <td>4</td>
-<td>Strikes hostile mobs with lightning</td>
+<td>Wild Pokémon nearby glow, and shinies are named</td>
 </tr>
 <tr>
 <td>Latios</td>
@@ -124,9 +168,33 @@
 <td>6</td>
 <td>Clears the weather</td>
 </tr>
+<tr>
+<td>Kyogre</td>
+<td>Spiral</td>
+<td>7</td>
+<td>Brings rain</td>
+</tr>
+<tr>
+<td>Cresselia</td>
+<td>Crescent</td>
+<td>8</td>
+<td>Ends the night</td>
+</tr>
+<tr>
+<td>Darkrai</td>
+<td>Star</td>
+<td>9</td>
+<td>Brings the night</td>
+</tr>
+<tr>
+<td>Rayquaza</td>
+<td>S, drawn upwards</td>
+<td>10</td>
+<td>Launches you into the sky</td>
+</tr>
 </tbody>
 </table>
-<p>Each sign costs 10 styler energy and has its own cooldown.</p>
+<p>Each sign costs 10 styler energy and has its own cooldown. The weather and time signs also share a world-wide cooldown, so players on a server can't keep flipping the weather.</p>
 <p><img alt="Ranger Sign" src="https://raw.githubusercontent.com/Zepto-Dev/Cobblemon-Ranger/main/curseforge/screenshots/13-ranger-sign.png" /></p>
 <h2>🎨 Stylers, energy and upgrades</h2>
 <ul>

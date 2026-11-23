@@ -5,6 +5,7 @@ import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.cobblemon.mod.common.util.PlayerExtensionsKt;
 import dev.zepto.cobblemonranger.ranger.RangerManager;
+import dev.zepto.cobblemonranger.registry.ModAttachments;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -78,6 +79,16 @@ public final class PartnerManager {
 
     public static void clearPartner(ServerPlayer player) {
         RangerManager.update(player, data -> data.withPartner(Optional.empty()));
+    }
+
+    /** Loops charged towards the partner's own Poké Assist, from 0 to {@link PartnerCharge#FULL}. */
+    public static int charge(ServerPlayer player, Pokemon partner) {
+        return player.getData(ModAttachments.PARTNER_CHARGE).loopsFor(partner.getUuid());
+    }
+
+    public static void setCharge(ServerPlayer player, Pokemon partner, int loops) {
+        player.setData(ModAttachments.PARTNER_CHARGE, new PartnerCharge(Optional.of(partner.getUuid()),
+                Math.max(0, Math.min(PartnerCharge.FULL, loops))));
     }
 
     /** Raises the partner's friendship a little; called after captures it was around for. */

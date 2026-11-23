@@ -14,11 +14,13 @@ import java.util.UUID;
 
 /**
  * Server to client: start the capture minigame against the given wild Pokémon. {@code assists} are the Pokémon that
- * can lend a Poké Assist, and {@code assistStrength} scales their effects (higher with a Partner Pokémon around).
+ * can lend a Poké Assist. {@code assistStrength} scales the Partner Pokémon's assist, which can only be used once
+ * {@code partnerCharge} loops (carried over from earlier captures) reach {@code partnerChargeFull}.
  */
-public record OpenCapturePayload(int entityId, Component name, String pokemonType, int catchRate, int level, boolean shiny,
-                                 int energy, int maxEnergy, float lineLength, float loopPower, int lineColor,
-                                 List<Assist> assists, float assistStrength) implements CustomPacketPayload {
+public record OpenCapturePayload(int entityId, Component name, String pokemonType, String secondaryType, int catchRate,
+                                 int level, boolean shiny, int energy, int maxEnergy, float lineLength, float loopPower,
+                                 int lineColor, List<Assist> assists, float assistStrength, int partnerCharge,
+                                 int partnerChargeFull) implements CustomPacketPayload {
     public static final Type<OpenCapturePayload> TYPE = new Type<>(CobblemonRanger.id("open_capture"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, OpenCapturePayload> STREAM_CODEC =
@@ -32,6 +34,7 @@ public record OpenCapturePayload(int entityId, Component name, String pokemonTyp
         buf.writeVarInt(entityId);
         ComponentSerialization.STREAM_CODEC.encode(buf, name);
         buf.writeUtf(pokemonType);
+        buf.writeUtf(secondaryType);
         buf.writeVarInt(catchRate);
         buf.writeVarInt(level);
         buf.writeBoolean(shiny);
@@ -48,12 +51,15 @@ public record OpenCapturePayload(int entityId, Component name, String pokemonTyp
             buf.writeBoolean(assist.partner());
         }
         buf.writeFloat(assistStrength);
+        buf.writeVarInt(partnerCharge);
+        buf.writeVarInt(partnerChargeFull);
     }
 
     private static OpenCapturePayload read(RegistryFriendlyByteBuf buf) {
         int entityId = buf.readVarInt();
         Component name = ComponentSerialization.STREAM_CODEC.decode(buf);
         String type = buf.readUtf();
+        String secondaryType = buf.readUtf();
         int catchRate = buf.readVarInt();
         int level = buf.readVarInt();
         boolean shiny = buf.readBoolean();
@@ -68,8 +74,11 @@ public record OpenCapturePayload(int entityId, Component name, String pokemonTyp
             assists.add(new Assist(UUIDUtil.STREAM_CODEC.decode(buf), ComponentSerialization.STREAM_CODEC.decode(buf),
                     buf.readUtf(), buf.readBoolean()));
         }
-        return new OpenCapturePayload(entityId, name, type, catchRate, level, shiny, energy, maxEnergy, lineLength,
-                loopPower, lineColor, assists, buf.readFloat());
+        float assistStrength = buf.readFloat();
+        int partnerCharge = buf.readVarInt();
+        int partnerChargeFull = buf.readVarInt();
+        return new OpenCapturePayload(entityId, name, type, secondaryType, catchRate, level, shiny, energy, maxEnergy,
+                lineLength, loopPower, lineColor, assists, assistStrength, partnerCharge, partnerChargeFull);
     }
 
     @Override

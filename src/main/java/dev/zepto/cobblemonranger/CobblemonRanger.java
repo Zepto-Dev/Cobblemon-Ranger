@@ -4,6 +4,7 @@ import dev.zepto.cobblemonranger.capture.CaptureManager;
 import dev.zepto.cobblemonranger.capture.FriendManager;
 import dev.zepto.cobblemonranger.capture.PartnerManager;
 import dev.zepto.cobblemonranger.capture.RangerCommands;
+import dev.zepto.cobblemonranger.config.RangerClientConfig;
 import dev.zepto.cobblemonranger.config.RangerConfig;
 import dev.zepto.cobblemonranger.field.SurfHandler;
 import dev.zepto.cobblemonranger.hq.RangerHq;
@@ -18,6 +19,7 @@ import dev.zepto.cobblemonranger.registry.ModEffects;
 import dev.zepto.cobblemonranger.registry.ModItems;
 import dev.zepto.cobblemonranger.registry.ModMenus;
 import dev.zepto.cobblemonranger.registry.ModRecipes;
+import dev.zepto.cobblemonranger.registry.ModSounds;
 import dev.zepto.cobblemonranger.registry.ModVillagers;
 import dev.zepto.cobblemonranger.signs.SignManager;
 import net.minecraft.resources.ResourceLocation;
@@ -36,9 +38,11 @@ public final class CobblemonRanger {
 
     public CobblemonRanger(IEventBus modBus, ModContainer container) {
         container.registerConfig(ModConfig.Type.SERVER, RangerConfig.SPEC);
+        container.registerConfig(ModConfig.Type.CLIENT, RangerClientConfig.SPEC);
         ModDataComponents.COMPONENTS.register(modBus);
         ModAttachments.ATTACHMENTS.register(modBus);
         ModEffects.EFFECTS.register(modBus);
+        ModSounds.SOUNDS.register(modBus);
         ModBlocks.BLOCKS.register(modBus);
         ModItems.ITEMS.register(modBus);
         ModMenus.MENUS.register(modBus);

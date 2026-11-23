@@ -1,0 +1,8 @@
+{
+  "music.capture": {
+    "sounds": [{"name": "cobblemonranger:music/capture", "stream": true, "volume": 0.7}]
+  },
+  "music.victory": {
+    "sounds": [{"name": "cobblemonranger:music/victory", "stream": true, "volume": 0.7}]
+  }
+}

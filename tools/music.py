@@ -492,8 +492,183 @@ def victory_c():
     return s.mix({"bells": 0.35, "lead": 0.4, "strings": 0.4, "bass": 0.4, "drums": 0.4}, loop=False, verb=0.3)
 
 
-CAPTURE = {"A": capture_a, "B": capture_b, "C": capture_c}
-VICTORY = {"A": victory_a, "B": victory_b, "C": victory_c}
+
+# ---- Round 2: in the style of a DS ranger game's capture battle (fast, brass over a string ostinato, rock drums).
+# Dylan pointed at reference tracks for the feel only; these melodies and arrangements are new.
+
+def ebass(f, dur):
+    """Picked electric bass: a saw whose brightness falls off quickly."""
+    n = int(dur * SR)
+    e = env_adsr(n, 0.004, 0.12, 0.6, 0.04)
+    t = np.arange(len(e)) / SR
+    return additive_saw(f, t, 1.5 + 6 * np.exp(-t * 18)) * e * 0.6
+
+
+def staccato(f, dur):
+    return strings(f, min(dur, 0.16), r=0.06, a=0.008) * 1.3
+
+
+def ostinato(song, bus, chords, pattern=(0, 2, 3, 2), octave=4, gain=1.0):
+    """Sixteenth-note string figure on root / third / fifth / octave of each chord."""
+    for bi, bar in enumerate(chords):
+        per = 4 / len(bar)
+        for ci, (root, q) in enumerate(bar):
+            t = chord_tones(root + str(octave), q)
+            tones = [t[0], t[1], t[2], t[0] + 12]
+            for k in range(int(per / 0.25)):
+                song.place(bus, staccato(freq(tones[pattern[k % len(pattern)]]), 0.25 * song.spb),
+                           bi * 4 + ci * per + k * 0.25, gain * (1.0 if k % 4 == 0 else 0.7))
+
+
+def rock_drums(song, bars, fills=(7, 15), crashes=(0, 8)):
+    for bar in range(bars):
+        if bar in fills:
+            song.drums("drums", "k...s...+h.h.....", 1, start_bar=bar, step=0.25)
+            for i, beat in enumerate((2, 2.25, 2.5, 2.75, 3, 3.25, 3.5, 3.75)):
+                song.place("drums", drum("s" if i < 4 else "t"), bar * 4 + beat, 0.5 + 0.06 * i)
+        else:
+            song.drums("drums", "k..k..k.+..s...s.+hhhhhhho", 1, start_bar=bar, step=0.5)
+    for bar in crashes:
+        song.place("drums", drum("c"), bar * 4, 0.85)
+
+
+def capture_d():
+    """'Rapid Pursuit': C minor, 176 bpm. Brass lead, string ostinato, electric bass, rock drums."""
+    s = Song(176, 16)
+    lead = parse(
+        "G4:0.5 C5:0.5 Eb5:0.5 G5:1 F5:0.5 Eb5:0.5 D5:0.5 | Eb5:1.5 C5:0.5 G4:2 |"
+        "Ab4:0.5 C5:0.5 Eb5:0.5 Ab5:1 G5:0.5 F5:0.5 Eb5:0.5 | F5:1.5 D5:0.5 Bb4:1 D5:1 |"
+        "G5:0.5 G5:0.5 G5:0.5 Ab5:0.5 G5:1 Eb5:1 | C6:1.5 Bb5:0.5 G5:1 Eb5:1 |"
+        "Ab5:1 G5:0.5 F5:0.5 F5:1 Eb5:0.5 D5:0.5 | D5:1 B4:1 G4:1 B4:0.5 D5:0.5 |"
+        "C6:2 Bb5:0.5 Ab5:0.5 G5:1 | F5:1.5 G5:0.5 Ab5:1 Bb5:1 |"
+        "G5:1 D5:0.5 G5:0.5 Bb5:1 Ab5:0.5 G5:0.5 | Eb5:3 G5:0.5 C6:0.5 |"
+        "Eb6:1.5 C6:0.5 Ab5:1 C6:1 | D6:1.5 Bb5:0.5 F5:1 Bb5:1 |"
+        "G5:0.5 Bb5:0.5 Eb6:1 F6:0.5 D6:0.5 Bb5:1 | B5:1 D6:1 G6:2")
+    chords = chord_list("C:min C:min Ab:maj Bb:maj C:min C:min Ab:maj,Bb:maj G:maj "
+                        "Ab:maj Bb:maj G:min C:min Ab:maj Bb:maj Eb:maj,Bb:maj G:maj")
+    s.melody("lead", lead, brass, legato=0.95)
+    s.melody("double", lead, lambda f, d: pulse(f, d, duty=0.25), transpose=-12)
+    ostinato(s, "strings", chords)
+    bassline(s, "bass", chords, ebass, "drive")
+    rock_drums(s, 16)
+    return s.mix({"lead": 0.55, "double": 0.1, "strings": 0.3, "bass": 0.45, "drums": 0.55},
+                 verb=0.14, pans={"double": 0.3, "strings": -0.3})
+
+
+def capture_e():
+    """'Styler Rush': A minor, 172 bpm. Synth-and-brass unison lead, syncopated hits, pulsing strings."""
+    s = Song(172, 16)
+    lead = parse(
+        "A4:0.75 C5:0.75 E5:0.5 A5:0.5 G5:0.5 E5:1 | F5:0.75 E5:0.75 C5:0.5 A4:2 |"
+        "G4:0.75 B4:0.75 D5:0.5 G5:0.5 F5:0.5 D5:1 | E5:2 r:0.5 A4:0.5 B4:0.5 C5:0.5 |"
+        "E5:0.75 A5:0.75 C6:0.5 B5:0.5 A5:0.5 E5:1 | F5:0.75 A5:0.75 C6:0.5 D6:1 C6:1 |"
+        "B5:0.75 G5:0.75 D5:0.5 G5:0.5 A5:0.5 B5:1 | G#5:2 E5:1 B4:1 |"
+        "D5:0.5 F5:0.5 A5:1 D6:1 C6:1 | C6:0.75 B5:0.75 A5:0.5 E5:2 |"
+        "F5:0.5 G5:0.5 A5:0.5 C6:0.5 F6:1 E6:1 | D6:1.5 B5:0.5 G5:2 |"
+        "A5:0.5 D6:0.5 F6:1 E6:0.5 D6:0.5 C6:1 | E6:1.5 C6:0.5 A5:2 |"
+        "F6:0.75 E6:0.75 D6:0.5 C6:0.5 B5:0.5 A5:1 | G#5:1 B5:1 E6:1 r:1")
+    chords = chord_list("A:min F:maj G:maj A:min A:min F:maj G:maj E:maj "
+                        "D:min A:min F:maj G:maj D:min A:min F:maj E:maj")
+    s.melody("lead", lead, lambda f, d: pulse(f, d, duty=0.25), legato=0.9)
+    s.melody("brass", lead, brass, legato=0.9)
+    # chord hits on the syncopated 1, and-of-2, 4 of every bar
+    for bi, bar in enumerate(chords):
+        root, q = bar[0]
+        for off, ln in ((0, 0.6), (1.5, 0.4), (3, 0.6)):
+            for m in chord_tones(root + "4", q):
+                s.place("hits", brass(freq(m), ln * s.spb, r=0.06), bi * 4 + off, 1 / 3)
+    ostinato(s, "strings", chords, pattern=(0, 0, 3, 0, 2, 0, 3, 2), octave=3)
+    bassline(s, "bass", chords, ebass, "octave")
+    rock_drums(s, 16)
+    return s.mix({"lead": 0.3, "brass": 0.4, "hits": 0.18, "strings": 0.3, "bass": 0.45, "drums": 0.55},
+                 verb=0.13, pans={"lead": 0.2, "hits": -0.25, "strings": 0.3})
+
+
+def capture_f():
+    """'Ridge Runner': G minor, 164 bpm. Heroic brass with a string counter-line, timpani and rock drums."""
+    s = Song(164, 16)
+    lead = parse(
+        "D5:1 G5:1 Bb5:1.5 A5:0.5 | G5:1 Eb5:1 Bb4:2 |"
+        "C5:0.5 F5:0.5 A5:1 C6:1.5 Bb5:0.5 | A5:2 F#5:1 D5:1 |"
+        "D5:1 G5:1 Bb5:1 D6:1 | Eb6:1.5 D6:0.5 Bb5:1 G5:1 |"
+        "C6:1 Bb5:0.5 A5:0.5 G5:1 Eb5:1 | D5:1 F#5:1 A5:1 C6:1 |"
+        "Bb5:1.5 G5:0.5 Eb5:2 | C6:1.5 A5:0.5 F5:2 |"
+        "D6:1 C6:0.5 Bb5:0.5 F5:1 Bb5:1 | G5:3 D5:1 |"
+        "G5:0.5 Bb5:0.5 Eb6:1 D6:1 C6:1 | A5:0.5 C6:0.5 F6:1 Eb6:1 D6:1 |"
+        "Eb6:1 C6:1 D6:1 A5:1 | F#5:1 A5:1 D6:2")
+    counter = parse(
+        "Bb4:2 D5:2 | Eb5:2 G4:2 | A4:2 F4:2 | F#4:2 A4:2 |"
+        "Bb4:2 G4:2 | G4:2 Bb4:2 | Eb5:2 C5:2 | F#4:2 D4:2 |"
+        "G4:2 Bb4:2 | A4:2 C5:2 | F4:2 D4:2 | Bb4:2 D5:2 |"
+        "Eb5:2 G4:2 | F4:2 A4:2 | G4:2 F#4:2 | A4:2 F#4:2")
+    chords = chord_list("G:min Eb:maj F:maj D:maj G:min Eb:maj C:min D:maj "
+                        "Eb:maj F:maj Bb:maj G:min Eb:maj F:maj C:min,D:maj D:maj")
+    s.melody("lead", lead, brass, legato=0.97)
+    s.melody("counter", counter, lambda f, d: strings(f, d, a=0.06), legato=1.0)
+    ostinato(s, "ostinato", chords, pattern=(0, 2, 0, 3))
+    bassline(s, "bass", chords, ebass, "drive")
+    rock_drums(s, 16)
+    for bar in (0, 4, 8, 12):
+        s.place("drums", drum("t"), bar * 4, 0.8)
+    return s.mix({"lead": 0.55, "counter": 0.3, "ostinato": 0.22, "bass": 0.45, "drums": 0.55},
+                 verb=0.18, pans={"counter": -0.3, "ostinato": 0.3})
+
+
+def timpani_roll(song, start, beats, gain=0.6):
+    k = 0
+    while k * 0.125 < beats:
+        song.place("drums", drum("t"), start + k * 0.125, gain * (0.4 + 0.6 * k * 0.125 / beats))
+        k += 1
+
+
+def fanfare(bpm, lead, chords_spec, final_note, final_chord, roll=True, run=None):
+    """Shared shape of the round-2 jingles: one bar of brass over strings, then a held chord with a crash.
+    chords_spec: (beat, root, quality, beats)."""
+    s = Song(bpm, 3)
+    start = 1 if roll or run else 0
+    if roll:
+        timpani_roll(s, 0, 1)
+    if run:
+        s.melody("strings", parse(run), staccato, start=start - 1)
+    s.melody("lead", parse(lead), brass, start=start, legato=0.95)
+    s.melody("double", parse(lead), lambda f, d: pulse(f, d, duty=0.25), start=start, transpose=-12)
+    for beat, root, q, ln in chords_spec + [(4, final_chord[0], final_chord[1], 3.5)]:
+        for m in chord_tones(root + "4", q):
+            s.place("strings", strings(freq(m), ln * s.spb, a=0.02, r=0.5 if beat == 4 else 0.15),
+                    start + beat, 1 / 3)
+        s.place("bass", ebass(freq(midi(root + "2")), ln * s.spb), start + beat)
+    s.place("lead", brass(freq(midi(final_note)), 3.2 * s.spb, r=0.6), start + 4, 1.0)
+    s.place("double", pulse(freq(midi(final_note) - 12), 3.2 * s.spb), start + 4, 1.0)
+    for beat in (0, 1, 2, 3):
+        s.place("drums", drum("k"), start + beat, 0.6)
+        s.place("drums", drum("s"), start + beat + 0.5, 0.35)
+    s.place("drums", drum("k"), start + 4, 0.9)
+    s.place("drums", drum("c"), start + 4, 1.0)
+    return s.mix({"lead": 0.55, "double": 0.1, "strings": 0.4, "bass": 0.4, "drums": 0.55}, loop=False, verb=0.22)
+
+
+def victory_d():
+    """Bright C major fanfare (lands in the major after capture D's C minor), with a timpani roll in."""
+    return fanfare(160, "C5:0.5 E5:0.5 G5:0.5 C6:1 A5:0.5 B5:0.5 D6:0.5",
+                   [(0, "C", "maj", 2.5), (2.5, "F", "maj", 0.5), (3, "G", "maj", 1)], "C6", ("C", "maj"))
+
+
+def victory_e():
+    """Quick A major flourish: a string run up into a triplet brass climb."""
+    return fanfare(170, "E5:0.333 A5:0.333 C#6:0.334 E6:1 D6:0.5 C#6:0.5 B5:0.5 C#6:0.5",
+                   [(0, "A", "maj", 2), (2, "D", "maj", 1), (3, "E", "maj", 1)], "A5", ("A", "maj"),
+                   roll=False, run="E4:0.25 F#4:0.25 G#4:0.25 B4:0.25 r:3")
+
+
+def victory_f():
+    """Broad Bb major fanfare with a dotted pickup, timpani roll and a held tonic chord."""
+    return fanfare(150, "F5:0.75 Bb5:0.25 D6:1 Eb6:0.5 C6:0.5 D6:1",
+                   [(0, "Bb", "maj", 2), (2, "Eb", "maj", 0.5), (2.5, "F", "maj", 0.5), (3, "Bb", "maj", 1)],
+                   "Bb5", ("Bb", "maj"))
+
+
+CAPTURE = {"A": capture_a, "B": capture_b, "C": capture_c, "D": capture_d, "E": capture_e, "F": capture_f}
+VICTORY = {"A": victory_a, "B": victory_b, "C": victory_c, "D": victory_d, "E": victory_e, "F": victory_f}
 # The options Dylan picked; these are what the mod ships.
 CHOSEN_CAPTURE = "A"
 CHOSEN_VICTORY = "A"

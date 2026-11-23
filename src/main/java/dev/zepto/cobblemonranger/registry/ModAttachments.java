@@ -24,6 +24,9 @@ public final class ModAttachments {
     /** Charge of the Partner Pokémon's own Poké Assist. */
     public static final Supplier<AttachmentType<PartnerCharge>> PARTNER_CHARGE = ATTACHMENTS.register("partner_charge",
             () -> AttachmentType.builder(() -> PartnerCharge.EMPTY).serialize(PartnerCharge.CODEC).copyOnDeath().build());
+    /** Game time after which a Ranger HQ Terminal will charge this player's styler again. */
+    public static final Supplier<AttachmentType<Long>> NEXT_HQ_CHARGE = ATTACHMENTS.register("next_hq_charge",
+            () -> AttachmentType.builder(() -> 0L).serialize(Codec.LONG).copyOnDeath().build());
 
     private ModAttachments() {
     }

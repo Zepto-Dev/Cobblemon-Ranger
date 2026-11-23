@@ -1,17 +1,20 @@
 package dev.zepto.cobblemonranger.compat;
 
 import dev.zepto.cobblemonranger.CobblemonRanger;
-import dev.zepto.cobblemonranger.recipe.StylerUpgradeRecipe;
+import dev.zepto.cobblemonranger.registry.ModItems;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
-import mezz.jei.api.gui.builder.IIngredientAcceptor;
-import mezz.jei.api.recipe.category.extensions.vanilla.smithing.ISmithingCategoryExtension;
-import mezz.jei.api.registration.IVanillaCategoryExtensionRegistration;
+import mezz.jei.api.constants.VanillaTypes;
+import mezz.jei.api.registration.IRecipeRegistration;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
+
+import java.util.List;
 
 /**
- * Shows styler upgrade recipes in JEI's smithing category. JEI only lists smithing recipes it knows how to lay out, so
- * the upgrade recipe needs this extension. Only loaded when JEI is installed.
+ * Explains in JEI's info tab that upgrade modules are installed at a Ranger HQ Terminal. Only loaded when JEI is
+ * installed.
  */
 @JeiPlugin
 public final class JeiCompat implements IModPlugin {
@@ -21,30 +24,11 @@ public final class JeiCompat implements IModPlugin {
     }
 
     @Override
-    public void registerVanillaCategoryExtensions(IVanillaCategoryExtensionRegistration registration) {
-        registration.getSmithingCategory().addExtension(StylerUpgradeRecipe.class, new StylerUpgradeExtension());
-    }
-
-    private static final class StylerUpgradeExtension implements ISmithingCategoryExtension<StylerUpgradeRecipe> {
-        @Override
-        public <T extends IIngredientAcceptor<T>> void setTemplate(StylerUpgradeRecipe recipe, T ingredients) {
-            ingredients.addIngredients(recipe.template());
-        }
-
-        @Override
-        public <T extends IIngredientAcceptor<T>> void setBase(StylerUpgradeRecipe recipe, T ingredients) {
-            ingredients.addItemStacks(StylerUpgradeRecipe.exampleBases());
-        }
-
-        @Override
-        public <T extends IIngredientAcceptor<T>> void setAddition(StylerUpgradeRecipe recipe, T ingredients) {
-            ingredients.addIngredients(recipe.addition());
-        }
-
-        @Override
-        public <T extends IIngredientAcceptor<T>> void setOutput(StylerUpgradeRecipe recipe, T ingredients) {
-            // Same order as the bases, so JEI cycles each colour's result alongside it.
-            ingredients.addItemStacks(StylerUpgradeRecipe.exampleBases().stream().map(recipe::upgrade).toList());
-        }
+    public void registerRecipes(IRecipeRegistration registration) {
+        List<ItemStack> modules = List.of(new ItemStack(ModItems.ENERGY_UPGRADE.get()),
+                new ItemStack(ModItems.LINE_UPGRADE.get()), new ItemStack(ModItems.POWER_UPGRADE.get()),
+                new ItemStack(ModItems.RANGER_HQ.get()));
+        registration.addIngredientInfo(modules, VanillaTypes.ITEM_STACK,
+                Component.translatable("info.cobblemonranger.hq_upgrades"));
     }
 }

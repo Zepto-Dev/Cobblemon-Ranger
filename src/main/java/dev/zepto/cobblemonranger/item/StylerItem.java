@@ -183,6 +183,10 @@ public class StylerItem extends Item {
                 ? Component.translatable("tooltip.cobblemonranger.level_max", progress.level())
                 : Component.translatable("tooltip.cobblemonranger.level", progress.level(), progress.xp(),
                 StylerProgress.xpToNext(progress.level()))).withStyle(ChatFormatting.GOLD));
+        if (progress.captureLevelCap() < 100) {
+            tooltip.add(Component.translatable("tooltip.cobblemonranger.capture_cap", progress.captureLevelCap())
+                    .withStyle(ChatFormatting.GOLD));
+        }
         for (StylerStats.Stat stat : StylerStats.Stat.values()) {
             tooltip.add(Component.translatable("tooltip.cobblemonranger.stat." + stat.getSerializedName(),
                     stats.level(stat) + 1, StylerStats.MAX_LEVEL + 1).withStyle(ChatFormatting.GRAY));

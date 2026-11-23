@@ -18,6 +18,7 @@ import net.minecraft.world.entity.npc.VillagerTrades;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -26,7 +27,10 @@ import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
 import net.neoforged.neoforge.event.village.VillagerTradesEvent;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 
 /**
  * The Ranger villager: levels up only by having missions completed for it (its trades give no XP), sells styler gear,
@@ -36,8 +40,10 @@ public final class RangerHq {
     /** Villager XP a completed mission gives, by the Ranger's current level: 2, 4, 4 and 4 missions per level. */
     private static final int[] MISSION_XP = {5, 15, 20, 25};
     private static final List<String> VILLAGES = List.of("plains", "desert", "savanna", "snowy", "taiga");
-    /** Share of a village's house slots that go to the HQ. */
+    /** Share of a village's house slots that go to the HQ. Only the first one a village rolls is built. */
     private static final double HQ_SHARE = 0.06;
+    /** The HQ pool elements of the running server, compared by identity. */
+    private static final Set<StructurePoolElement> HQ_ELEMENTS = Collections.newSetFromMap(new IdentityHashMap<>());
 
     private RangerHq() {
     }
@@ -86,6 +92,7 @@ public final class RangerHq {
     public static void addToVillages(ServerAboutToStartEvent event) {
         Registry<StructureTemplatePool> pools = event.getServer().registryAccess()
                 .registryOrThrow(Registries.TEMPLATE_POOL);
+        HQ_ELEMENTS.clear();
         for (String village : VILLAGES) {
             StructureTemplatePool pool = pools.get(ResourceLocation.withDefaultNamespace("village/" + village
                     + "/houses"));
@@ -94,6 +101,7 @@ public final class RangerHq {
             }
             StructurePoolElement element = StructurePoolElement.single(CobblemonRanger.MOD_ID + ":village/" + village
                     + "_ranger_hq").apply(StructureTemplatePool.Projection.RIGID);
+            HQ_ELEMENTS.add(element);
             int weight = Math.max(1, (int) Math.round(pool.templates.size() * HQ_SHARE));
             for (int i = 0; i < weight; i++) {
                 pool.templates.add(element);
@@ -102,5 +110,23 @@ public final class RangerHq {
             raw.add(Pair.of(element, weight));
             pool.rawTemplates = raw;
         }
+    }
+
+    /**
+     * Drops the HQ from a village's candidate pieces once the village already has one. Called by the jigsaw placer
+     * (JigsawPlacerMixin) with the pieces placed so far.
+     */
+    public static List<StructurePoolElement> withoutPlacedHq(List<StructurePoolElement> candidates, List<?> placed) {
+        if (HQ_ELEMENTS.isEmpty() || candidates.stream().noneMatch(HQ_ELEMENTS::contains)) {
+            return candidates;
+        }
+        for (Object piece : placed) {
+            if (piece instanceof PoolElementStructurePiece poolPiece && HQ_ELEMENTS.contains(poolPiece.getElement())) {
+                List<StructurePoolElement> filtered = new ArrayList<>(candidates);
+                filtered.removeIf(HQ_ELEMENTS::contains);
+                return filtered;
+            }
+        }
+        return candidates;
     }
 }

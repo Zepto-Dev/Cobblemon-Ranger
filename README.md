@@ -40,12 +40,16 @@ A NeoForge 1.21.1 add-on for [Cobblemon](https://cobblemon.com) that brings the 
   stone, cobblestone, sandstone or gravel (Fighting, Rock, Ground or Steel); **Soak** puts out fires and campfires
   and cools lava into obsidian (Water or Ice); **Surf** on water lets you ride along the surface in the direction
   you look for two minutes (Water). Pokémon that know the move itself can help too. A friend goes home afterwards;
-  the Partner Pokémon stays but costs a little styler energy. Block protection from other mods is respected.
+  the Partner Pokémon stays but costs a little styler energy and rests for a few seconds before its next field move
+  (`partnerFieldMoveCooldownSeconds` in the server config, default 4). Block protection from other mods is respected.
 - **Styler levels.** Captures and missions give the styler XP. Each level (up to Lv. 20) adds energy, line length
-  and loop power on top of the upgrade modules, and levelling up refills the styler.
+  and loop power on top of the upgrade modules, and levelling up refills the styler. The styler level also caps the
+  level of Pokémon you can capture: up to Lv. 15 at styler Lv. 1, five more per styler level (Lv. 50 at styler
+  Lv. 8, no limit from styler Lv. 18). The tooltip shows the current cap; `captureLevelCapBase` and
+  `captureLevelCapPerLevel` in the server config change it (a base of 100 turns it off).
 - **Ranger HQ and missions.** Missions come from Rangers: villagers who work at a **Ranger HQ Terminal** (crafted
   from three glass panes, four iron ingots, redstone and an emerald, or found in the Ranger HQ houses that spawn in
-  plains, desert, savanna, snowy and taiga villages). Use a styler on a Ranger to be offered a mission: capture
+  plains, desert, savanna, snowy and taiga villages, at most one per village). Use a styler on a Ranger to be offered a mission: capture
   Pokémon (of a certain type), clear obstacles with field moves, use Poké Assists, battle alongside friends, or bring
   supplies. Accept it from the chat, then report back to the same Ranger for emeralds, styler XP, Ranger points and
   sometimes an upgrade module. After handing one in you wait a Minecraft day (20 minutes, `missionCooldownMinutes`
@@ -69,11 +73,16 @@ A NeoForge 1.21.1 add-on for [Cobblemon](https://cobblemon.com) that brings the 
   and `worldSignSharedCooldownMinutes` in the server config). The legendary only appears for a few seconds and
   can't be caught or battled.
 - **Styler energy** is the styler's durability. It recharges slowly while carried and can be topped up with
-  redstone at an anvil. Stylers never break; an empty one just can't start a capture.
-- **Upgrade modules** (Energy, Line Length, Loop Power) can be found in structure chests (dungeons, mineshafts,
-  temples, strongholds, ancient cities, shipwrecks, trial chambers and more). Apply one at a smithing table:
-  module in the template slot, styler as the base, and a redstone block, string or amethyst shard as the
-  material. Each stat goes up to Lv. 5. The upgrade recipes show up in JEI and EMI under smithing.
+  redstone at an anvil. Stylers never break; an empty one just can't start a capture. A Ranger HQ Terminal can
+  also charge it to full, once every 10 minutes per player (`hqChargeCooldownMinutes` in the server config).
+- **Upgrade modules** (Energy, Line Length, Loop Power) are rare finds in structure chests (dungeons, mineshafts,
+  temples, strongholds, ancient cities, shipwrecks, trial chambers and more; about a 6% chance per chest). The chest
+  in a village Ranger HQ always holds one or two. Install one at a **Ranger HQ
+  Terminal**: use the terminal, put the styler, the module and its material (a redstone block, string or amethyst
+  shard) in the three slots and press Install. Each stat goes up to Lv. 5. JEI and EMI explain this in their info
+  pages.
+- **Ranger HQ Terminal screen**: besides upgrades and charging, it shows your Ranger rank, your current mission,
+  who to report to and its reward, or how long until Rangers have a new mission for you.
 
 ## Building
 

@@ -2,6 +2,7 @@ package dev.zepto.cobblemonranger.item;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import dev.zepto.cobblemonranger.config.RangerConfig;
 import dev.zepto.cobblemonranger.registry.ModDataComponents;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -55,6 +56,11 @@ public record StylerProgress(int level, int xp) {
 
     public float lineBonus() {
         return 10f * (level - 1);
+    }
+
+    /** Highest Pok\u00e9mon level this styler can capture. */
+    public int captureLevelCap() {
+        return RangerConfig.captureLevelCap(level);
     }
 
     public float powerBonus() {

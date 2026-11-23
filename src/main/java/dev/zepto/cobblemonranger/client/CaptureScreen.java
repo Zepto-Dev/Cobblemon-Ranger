@@ -36,6 +36,7 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
     private static final float END_DELAY_FAILED = 1.6f;
     private static final float HINT_TIME = 6f;
     private static final int GAUGE_SEGMENTS = 10;
+    private static final float CHARGE_FX_TIME = 1.8f, DRAGON_FX_TIME = 1f;
 
     // Layout of the styler frame around the arena, in GUI pixels.
     private static final int MARGIN = 6, BEZEL_SIDE = 7, BEZEL_TOP = 12, BEZEL_BOTTOM = 28;
@@ -71,6 +72,11 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
     private int partnerCharge;
     /** Loops drawn around the Pokémon since the Partner's assist was used, or since the start. */
     private int chargeLoops;
+    /** Seconds since an Electric or Dragon assist went off, for their one-off animations; negative when idle. */
+    private float chargeFx = -1, dragonFx = -1;
+    /** Hearts rising from the Pokémon when a Charm-boosted loop lands: x, y, age. */
+    private final List<float[]> heartPops = new ArrayList<>();
+    private int lastCharmLoops;
 
     public CaptureScreen(OpenCapturePayload payload) {
         super(Component.translatable("screen.cobblemonranger.capture"));
@@ -133,6 +139,17 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
         attacks.tick(dt);
         shake = Math.max(0, shake - dt);
         assistBannerTime = Math.max(0, assistBannerTime - dt);
+        if (chargeFx >= 0) {
+            chargeFx = chargeFx + dt > CHARGE_FX_TIME ? -1 : chargeFx + dt;
+        }
+        if (dragonFx >= 0) {
+            dragonFx = dragonFx + dt > DRAGON_FX_TIME ? -1 : dragonFx + dt;
+        }
+        if (game.charmLoops() < lastCharmLoops) {
+            heartPops.add(new float[]{game.x, game.y - game.radius, 0});
+        }
+        lastCharmLoops = game.charmLoops();
+        heartPops.removeIf(heart -> (heart[2] += dt) > 1f);
 
         if (Math.abs(game.vx) > 4) {
             float target = game.vx > 0 ? 135f : 225f;
@@ -504,7 +521,7 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
             shapes.ring(px, py, r * 1.2f, 2f, 0xC0FF4040);
             graphics.flush();
         }
-        if (game.isHeld() || game.isBogged() || game.isSpooked() || game.isTimeSlowed() || game.isBlind()) {
+        if (game.isHeld() || game.isBogged()) {
             float pulse = 0.5f + 0.5f * (float) Math.sin(System.currentTimeMillis() / 120.0);
             Shapes shapes = new Shapes(graphics);
             shapes.ring(px, py, r * (1.3f + 0.1f * pulse), 2f, 0xA0000000 | assistColor);
@@ -537,21 +554,7 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
             }
         }
 
-        List<float[]> line = game.line();
-        int lineColor = game.isLineIron() ? 0xC8D0E0 : this.lineColor;
-        for (int i = 1; i < line.size(); i++) {
-            float[] a = line.get(i - 1);
-            float[] b = line.get(i);
-            float fade = 1 - game.pointAge(a);
-            int glowAlpha = (int) (0x90 * fade);
-            int coreAlpha = (int) (0x40 + 0xBF * fade);
-            shapes.line(sx(a[0]), sy(a[1]), sx(b[0]), sy(b[1]), 5f * scale, (glowAlpha << 24) | (lineColor & 0xFFFFFF));
-            shapes.line(sx(a[0]), sy(a[1]), sx(b[0]), sy(b[1]), 1.5f * scale, (coreAlpha << 24) | 0xFFFFFF);
-        }
-        if (!line.isEmpty()) {
-            float[] tip = line.get(line.size() - 1);
-            shapes.disc(sx(tip[0]), sy(tip[1]), 3f * scale, 0xFF000000 | lineColor);
-        }
+        drawLine(shapes);
     }
 
     /** Segmented capture gauge under the Pokémon, as in the DS games. */
@@ -894,6 +897,11 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
             return;
         }
         shake = 0.2f;
+        if (effect == CaptureGame.AssistEffect.CHARGE) {
+            chargeFx = 0;
+        } else if (effect == CaptureGame.AssistEffect.DRAGON_RUSH) {
+            dragonFx = 0;
+        }
         playSound(switch (effect) {
             case FIRE_RING -> SoundEvents.FIRECHARGE_USE;
             case BUBBLE -> SoundEvents.BUBBLE_COLUMN_UPWARDS_INSIDE;
@@ -944,10 +952,157 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
 
     // ------------------------------------------------------------------ assist effects
 
-    /** What Poké Assists leave on the ground: grass, quicksand, webs, the fire ring's scorch and drawn walls. */
+    /** The styler line, restyled by Steel (riveted cable), Fairy (pink and sparkling) and Fighting (orange aura). */
+    private void drawLine(Shapes shapes) {
+        List<float[]> line = game.line();
+        if (line.isEmpty()) {
+            return;
+        }
+        float time = (System.currentTimeMillis() % 100000L) / 1000f;
+        boolean iron = game.isLineIron();
+        boolean charm = game.charmLoops() > 0;
+        int lineColor = charm ? 0xFF96C8 : this.lineColor;
+        if (game.isCounterReady()) {
+            for (int i = 1; i < line.size(); i++) {
+                float[] a = line.get(i - 1), b = line.get(i);
+                float flicker = 0.5f + 0.5f * (float) Math.sin(i * 0.8f - time * 18);
+                float fade = 1 - game.pointAge(a);
+                shapes.line(sx(a[0]), sy(a[1]), sx(b[0]), sy(b[1]), (7 + 3 * flicker) * scale,
+                        alpha((int) (0x50 + 0x64 * flicker), fade) | 0xFF8C28);
+            }
+        }
+        for (int i = 1; i < line.size(); i++) {
+            float[] a = line.get(i - 1), b = line.get(i);
+            float fade = 1 - game.pointAge(a);
+            if (iron) {
+                shapes.line(sx(a[0]), sy(a[1]), sx(b[0]), sy(b[1]), 4f * scale, alpha(0xFF, 0.4f + 0.6f * fade) | 0x3C4250);
+            } else {
+                int glowAlpha = (int) (0x90 * fade);
+                shapes.line(sx(a[0]), sy(a[1]), sx(b[0]), sy(b[1]), 5f * scale, (glowAlpha << 24) | (lineColor & 0xFFFFFF));
+            }
+        }
+        for (int i = 1; i < line.size(); i++) {
+            float[] a = line.get(i - 1), b = line.get(i);
+            float fade = 1 - game.pointAge(a);
+            if (iron) {
+                shapes.line(sx(a[0]), sy(a[1]), sx(b[0]), sy(b[1]), 2f * scale, alpha(0xFF, 0.4f + 0.6f * fade) | 0xA0AABE);
+            } else {
+                int coreAlpha = (int) (0x40 + 0xBF * fade);
+                shapes.line(sx(a[0]), sy(a[1]), sx(b[0]), sy(b[1]), 1.5f * scale, (coreAlpha << 24) | 0xFFFFFF);
+            }
+        }
+        if (iron) {
+            List<float[]> rivets = resample(line, 9);
+            for (float[] p : rivets) {
+                shapes.rect(sx(p[0]) - 1.5f * scale, sy(p[1]) - 1.5f * scale, sx(p[0]) + 1.5f * scale, sy(p[1]) + 1.5f * scale,
+                        0xFF282832);
+                shapes.rect(sx(p[0]) - 0.8f * scale, sy(p[1]) - 0.8f * scale, sx(p[0]) + 0.8f * scale, sy(p[1]) + 0.8f * scale,
+                        0xFFE6EBF0);
+            }
+            // Sparks where the Pokémon grinds against the cable.
+            float[] nearest = null;
+            float best = Float.MAX_VALUE;
+            for (float[] p : line) {
+                float d = (p[0] - game.x) * (p[0] - game.x) + (p[1] - game.y) * (p[1] - game.y);
+                if (d < best) {
+                    best = d;
+                    nearest = p;
+                }
+            }
+            if (nearest != null && Math.sqrt(best) < game.radius + 3) {
+                Random sparks = new Random(System.currentTimeMillis() / 60);
+                for (int k = 0; k < 4; k++) {
+                    shapes.line(sx(nearest[0]), sy(nearest[1]), sx(nearest[0] + sparks.nextFloat() * 12 - 6),
+                            sy(nearest[1] - sparks.nextFloat() * 6), 1f * scale, 0xFFFFDC78);
+                }
+            }
+        }
+        if (charm) {
+            List<float[]> points = resample(line, 8);
+            long tick = System.currentTimeMillis() / 110;
+            for (int i = 0; i < points.size(); i++) {
+                if ((i + tick) % 3 == 0) {
+                    float[] p = points.get(i);
+                    shapes.line(sx(p[0]) - 2 * scale, sy(p[1]), sx(p[0]) + 2 * scale, sy(p[1]), 1f * scale, 0xFFFFE6F5);
+                    shapes.line(sx(p[0]), sy(p[1]) - 2 * scale, sx(p[0]), sy(p[1]) + 2 * scale, 1f * scale, 0xFFFFE6F5);
+                }
+            }
+        }
+        float[] tip = line.get(line.size() - 1);
+        shapes.disc(sx(tip[0]), sy(tip[1]), 3f * scale, 0xFF000000 | (iron ? 0xA0AABE : lineColor));
+    }
+
+    /** Points every {@code step} arena units along a polyline. */
+    private static List<float[]> resample(List<float[]> points, float step) {
+        List<float[]> out = new ArrayList<>();
+        if (points.isEmpty()) {
+            return out;
+        }
+        out.add(points.get(0));
+        float carried = 0;
+        for (int i = 1; i < points.size(); i++) {
+            float ax = points.get(i - 1)[0], ay = points.get(i - 1)[1];
+            float bx = points.get(i)[0], by = points.get(i)[1];
+            float length = (float) Math.hypot(bx - ax, by - ay);
+            float along = step - carried;
+            while (along <= length) {
+                float t = along / length;
+                out.add(new float[]{ax + (bx - ax) * t, ay + (by - ay) * t});
+                along += step;
+            }
+            carried = length - (along - step);
+        }
+        return out;
+    }
+
+    /** A sprite to draw after the shapes, sorted by height so nearer ones cover farther ones. */
+    private record Placed(AssistArt.Sprite sprite, int variant, float x, float y, float size, float alpha,
+                          boolean standing) {
+    }
+
+    private void drawPlaced(GuiGraphics graphics, List<Placed> sprites) {
+        drawPlaced(graphics, sprites, true);
+    }
+
+    private void drawPlaced(GuiGraphics graphics, List<Placed> sprites, boolean sort) {
+        if (sprites.isEmpty()) {
+            return;
+        }
+        if (sort) {
+            sprites.sort((a, b) -> Float.compare(a.y, b.y));
+        }
+        AttackArt.begin();
+        for (Placed p : sprites) {
+            float size = AssistArt.CELL * p.size * scale;
+            if (p.standing) {
+                AssistArt.standing(graphics, p.sprite, p.variant, sx(p.x), sy(p.y), size, p.alpha);
+            } else {
+                AssistArt.sprite(graphics, p.sprite, p.variant, sx(p.x), sy(p.y), size, p.alpha);
+            }
+        }
+    }
+
+    /** A flattened disc or ring lying on the ground, centred on (x, y) in arena units. */
+    private void groundEllipse(GuiGraphics graphics, float x, float y, float radius, float squash, int fill, int edge,
+                               float edgeWidth) {
+        graphics.pose().pushPose();
+        graphics.pose().translate(sx(x), sy(y), 0);
+        graphics.pose().scale(1, squash, 1);
+        Shapes flat = new Shapes(graphics);
+        if (fill != 0) {
+            flat.disc(0, 0, radius * scale, fill);
+        }
+        if (edge != 0) {
+            flat.ring(0, 0, radius * scale, edgeWidth * scale / squash, edge);
+        }
+        graphics.pose().popPose();
+    }
+
+    /** What Poké Assists leave on the ground: grass, quicksand, webs, scorch, frost, the clock and drawn walls. */
     private void drawAssistGround(GuiGraphics graphics) {
         Shapes shapes = new Shapes(graphics);
         float time = (System.currentTimeMillis() % 100000L) / 1000f;
+        List<Placed> sprites = new ArrayList<>();
         for (CaptureGame.Zone zone : game.zones) {
             float fade = Math.min(1, zone.life / 0.6f);
             switch (zone.kind) {
@@ -997,60 +1152,71 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
                         shapes.ring(cx, cy, r * k / 3.4f, 0.9f * scale, silk);
                     }
                 }
-                case FIRE_RING -> shapes.ring(sx(zone.x), sy(zone.y), zone.radius * scale, 7f * scale,
-                        alpha(0x50, fade) | 0x3A1A08);
+                case FIRE_RING -> shapes.ring(sx(zone.x), sy(zone.y), zone.radius * scale, 10f * scale,
+                        alpha(0x38, fade) | 0x502808);
                 default -> {
                 }
             }
         }
         for (CaptureGame.Wall wall : game.walls) {
             float fade = Math.min(1, wall.life / 0.6f);
-            List<float[]> points = wall.points;
-            if (wall.ice) {
-                for (int i = 1; i < points.size(); i++) {
-                    float[] a = points.get(i - 1), b = points.get(i);
-                    shapes.line(sx(a[0]), sy(a[1]), sx(b[0]), sy(b[1]), 7f * scale, alpha(0xC0, fade) | 0x9FDCF2);
+            List<float[]> points = resample(wall.points, 5);
+            for (int i = 0; i < points.size(); i++) {
+                float[] p = points.get(i);
+                if (wall.ice) {
+                    shapes.disc(sx(p[0]), sy(p[1]) + 1 * scale, 4 * scale, alpha(0x6E, fade) | 0xC8F0FF);
+                } else {
+                    shapes.disc(sx(p[0]), sy(p[1]) + 1 * scale, 5 * scale, alpha(0x70, fade) | 0x5A4632);
                 }
-                for (int i = 1; i < points.size(); i++) {
-                    float[] a = points.get(i - 1), b = points.get(i);
-                    shapes.line(sx(a[0]), sy(a[1]), sx(b[0]), sy(b[1]), 2f * scale, alpha(0xF0, fade) | 0xFFFFFF);
-                }
-            } else {
-                for (int i = 0; i < points.size(); i += 1) {
-                    float[] p = points.get(i);
-                    float r = (3.6f + (i * 7 % 5) * 0.4f) * scale;
-                    shapes.disc(sx(p[0]), sy(p[1]) + 1.5f * scale, r, alpha(0x60, fade));
-                    shapes.disc(sx(p[0]), sy(p[1]), r, alpha(0xFF, fade) | 0x6E655A);
-                    shapes.disc(sx(p[0]) - r * 0.3f, sy(p[1]) - r * 0.3f, r * 0.45f, alpha(0xFF, fade) | 0x9C9284);
-                }
+                // A fixed variant per point, so the wall doesn't shimmer as it grows.
+                int variant = (int) (Math.abs(p[0] * 7 + p[1] * 13)) % 4;
+                sprites.add(new Placed(wall.ice ? AssistArt.Sprite.SHARD : AssistArt.Sprite.CRAG, variant, p[0], p[1],
+                        1, fade, true));
+            }
+            if (wall.ice && !points.isEmpty()) {
+                float[] glint = points.get((int) (time * 25) % points.size());
+                sprites.add(new Placed(AssistArt.Sprite.SPARKLE, 0, glint[0], glint[1] - 9, 1, fade, false));
             }
         }
         graphics.flush();
+
+        float footY = game.y + game.radius * 0.7f;
+        if (game.isFrozen()) {
+            groundEllipse(graphics, game.x, footY, game.radius + 8, 0.35f, 0xAAE1F5FF, 0xFF96C8EB, 1);
+        }
+        if (game.isTimeSlowed()) {
+            // A clock face under the Pokémon, its hand creeping round.
+            float r = game.radius + 20;
+            groundEllipse(graphics, game.x, footY, r, 0.6f, 0, 0xDCF078C8, 2);
+            Shapes clock = new Shapes(graphics);
+            for (int i = 0; i < 12; i++) {
+                double a = Math.PI * 2 * i / 12;
+                float tx = sx(game.x + (float) Math.cos(a) * r * 0.86f), ty = sy(footY + (float) Math.sin(a) * r * 0.86f * 0.6f);
+                clock.rect(tx - 1.2f * scale, ty - 1.2f * scale, tx + 1.2f * scale, ty + 1.2f * scale, 0xFFFFBEF0);
+            }
+            double hand = time * Math.PI * 2 / 6 - Math.PI / 2;
+            clock.line(sx(game.x), sy(footY), sx(game.x + (float) Math.cos(hand) * r * 0.8f),
+                    sy(footY + (float) Math.sin(hand) * r * 0.8f * 0.6f), 2 * scale, 0xFFFF96DC);
+        }
+        graphics.flush();
+        drawPlaced(graphics, sprites);
     }
 
-    /** Assist effects that sit above the Pokémon: flames, wind, bubbles, ice and tints over the arena. */
+    /** Assist effects that sit above the Pokémon: flames, wind, bubbles, frost, wisps, smoke and pop-ups. */
     private void drawAssistAir(GuiGraphics graphics) {
         Shapes shapes = new Shapes(graphics);
         float time = (System.currentTimeMillis() % 100000L) / 1000f;
         float w = CaptureGame.WIDTH * scale, h = CaptureGame.HEIGHT * scale;
+        List<Placed> sprites = new ArrayList<>();
+        // Drawn after the sorted sprites, in this order.
+        List<Placed> overlay = new ArrayList<>();
         if (game.isTimeSlowed()) {
-            shapes.rect(arenaX, arenaY, arenaX + w, arenaY + h, 0x30B060F0);
-        }
-        if (game.isBlind()) {
-            shapes.rect(arenaX, arenaY, arenaX + w, arenaY + h, 0x50100818);
+            shapes.rect(arenaX, arenaY, arenaX + w, arenaY + h, 0x1EB060F0);
         }
         for (CaptureGame.Zone zone : game.zones) {
             float fade = Math.min(1, zone.life / 0.6f);
             if (zone.kind == CaptureGame.ZoneKind.FIRE_RING) {
-                int flames = 22;
-                for (int i = 0; i < flames; i++) {
-                    double a = Math.PI * 2 * i / flames + time * 0.4;
-                    float flicker = 0.7f + 0.3f * (float) Math.sin(time * 12 + i * 1.7);
-                    float fx = sx(zone.x + (float) Math.cos(a) * zone.radius);
-                    float fy = sy(zone.y + (float) Math.sin(a) * zone.radius);
-                    shapes.disc(fx, fy - 1.5f * scale, 4.5f * flicker * scale, alpha(0xC0, fade) | 0xF0602A);
-                    shapes.disc(fx, fy - 2.5f * scale, 2.6f * flicker * scale, alpha(0xE0, fade) | 0xFFD040);
-                }
+                drawFireWall(shapes, zone, fade, time);
             } else if (zone.kind == CaptureGame.ZoneKind.WHIRLWIND) {
                 for (int k = 0; k < 4; k++) {
                     float r = (zone.radius * (0.55f + k * 0.18f)) * scale;
@@ -1060,18 +1226,66 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
             }
         }
         for (CaptureGame.Bubble bubble : game.bubbles) {
-            float bx = sx(bubble.x), by = sy(bubble.y), r = bubble.radius * scale;
-            float wobble = 1 + 0.04f * (float) Math.sin(time * 9);
-            shapes.disc(bx, by, r * wobble, 0x3080C8FF);
-            shapes.ring(bx, by, r * wobble, 1.6f * scale, 0xC0B8E8FF);
-            shapes.disc(bx - r * 0.35f, by - r * 0.4f, Math.max(1.5f * scale, r * 0.18f), 0xD0FFFFFF);
+            // Outlined like the attack sprites: dark rim, light inner rim and a curved shine.
+            float bx = sx(bubble.x), by = sy(bubble.y);
+            float r = bubble.radius * (1 + 0.04f * (float) Math.sin(time * 9)) * scale;
+            shapes.disc(bx, by, r, 0x4696D2FF);
+            shapes.ring(bx, by, r, 1.2f * scale, 0xFF2850A0);
+            shapes.ring(bx, by, r - 1.2f * scale, 1f * scale, 0xE6C8F0FF);
+            shapes.arc(bx, by, r - 3.5f * scale, 2f * scale, (float) Math.toRadians(190), (float) Math.toRadians(60),
+                    0xFFFFFFFF);
+            shapes.disc(bx + r * 0.4f, by + r * 0.4f, 1.2f * scale, 0xE6FFFFFF);
         }
+        float px = game.x, py = game.y, pr = game.radius;
         if (game.isFrozen()) {
-            float px = sx(game.x), py = sy(game.y), r = game.radius * scale * 1.3f;
-            shapes.rect(px - r, py - r, px + r, py + r, 0x6090D8F0);
-            shapes.line(px - r, py - r, px + r, py - r, 1.5f * scale, 0xE0FFFFFF);
-            shapes.line(px - r, py - r, px - r, py + r, 1.5f * scale, 0xE0FFFFFF);
-            shapes.line(px - r * 0.5f, py - r * 0.6f, px - r * 0.1f, py - r * 0.2f, 1.2f * scale, 0xC0FFFFFF);
+            shapes.disc(sx(px), sy(py), pr * 0.95f * scale, 0x4678BEFF);
+            for (int i = 0; i < 5; i++) {
+                double a = Math.PI * 2 * i / 5 + time * 2;
+                sprites.add(new Placed(AssistArt.Sprite.SNOWFLAKE, 0, px + (float) Math.cos(a) * (pr + 8),
+                        py - 2 + (float) Math.sin(a) * pr * 0.7f, 1, 1, false));
+            }
+        }
+        if (game.isSpooked()) {
+            for (int i = 0; i < 3; i++) {
+                double a = Math.PI * 2 * i / 3 + time * 2;
+                sprites.add(new Placed(AssistArt.Sprite.WISP, (int) (time * 4) + i, px + (float) Math.cos(a) * (pr + 10),
+                        py - 6 + (float) Math.sin(a) * 10 + (float) Math.sin(time * 5 + i) * 2, 1, 0.95f, false));
+            }
+        }
+        if (game.isBlind()) {
+            for (int i = 0; i < 7; i++) {
+                double a = Math.PI * 2 * i / 7 + time * 1.5;
+                sprites.add(new Placed(AssistArt.Sprite.SMOKE, i, px + (float) Math.cos(a) * pr * 0.75f,
+                        py - pr * 0.4f + (float) Math.sin(a) * pr * 0.35f, 1, 1, false));
+            }
+        }
+        if (game.isPoisoned()) {
+            for (int i = 0; i < 6; i++) {
+                float u = (time * 0.6f + i / 6f) % 1;
+                sprites.add(new Placed(AssistArt.Sprite.POISON_BUBBLE, i,
+                        px - pr * 0.7f + i * pr * 0.28f + (float) Math.sin(u * 6 + i) * 2, py + 4 - u * pr * 2.4f,
+                        0.8f, 1 - u * 0.6f, false));
+            }
+        }
+        for (float[] heart : heartPops) {
+            sprites.add(new Placed(AssistArt.Sprite.HEART, 0, heart[0], heart[1] - heart[2] * 20, 1, 1 - heart[2], false));
+        }
+        if (chargeFx >= 0) {
+            // A battery pops up beside the Pokémon and fills while the styler recharges.
+            float progress = chargeFx / CHARGE_FX_TIME;
+            float bx = Math.min(CaptureGame.WIDTH - 14, px + pr + 18), by = Math.max(14, py - pr - 12);
+            float pop = Math.min(1, chargeFx * 6);
+            float out = progress > 0.85f ? (1 - progress) / 0.15f : 1;
+            overlay.add(new Placed(AssistArt.Sprite.BATTERY, Math.min(5, (int) (progress * 1.4f * 6)), bx, by,
+                    1.3f * pop, out, false));
+            for (int i = 0; i < 4; i++) {
+                double a = Math.PI * 2 * i / 4 + time * 6;
+                overlay.add(new Placed(AssistArt.Sprite.SPARKLE, 0, bx + (float) Math.cos(a) * 15,
+                        by + (float) Math.sin(a) * 9, 1, out, false));
+            }
+        }
+        if (dragonFx >= 0) {
+            drawDragonComet(shapes, px, py);
         }
         CaptureGame.DrawMode mode = game.drawMode();
         if (mode == CaptureGame.DrawMode.BOULDER || mode == CaptureGame.DrawMode.ICE) {
@@ -1083,6 +1297,62 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
                     mode == CaptureGame.DrawMode.ICE ? 0xFF9FDCF2 : 0xFF9C9284);
         }
         graphics.flush();
+        drawPlaced(graphics, sprites);
+        drawPlaced(graphics, overlay, false);
+    }
+
+    /** A wall of flame tongues round the ring, drawn back to front, with embers drifting up. */
+    private void drawFireWall(Shapes shapes, CaptureGame.Zone zone, float fade, float time) {
+        int count = 72;
+        Integer[] order = new Integer[count];
+        for (int i = 0; i < count; i++) {
+            order[i] = i;
+        }
+        java.util.Arrays.sort(order, (a, b) -> Double.compare(Math.sin(Math.PI * 2 * a / count),
+                Math.sin(Math.PI * 2 * b / count)));
+        int[] colors = {0xC42818, 0xF0641E, 0xFFAA32, 0xFFF096};
+        for (int i : order) {
+            double angle = Math.PI * 2 * i / count;
+            float x = zone.x + (float) Math.cos(angle) * zone.radius, y = zone.y + (float) Math.sin(angle) * zone.radius;
+            float height = 9 + 6 * (0.5f + 0.5f * (float) Math.sin(angle * 5 + time * 4))
+                    + 3 * (float) Math.sin(angle * 11 - time * 6);
+            for (int k = 0; k < colors.length; k++) {
+                float hh = height * (1 - k * 0.24f), half = 3 - k * 0.6f;
+                shapes.quad(sx(x - half), sy(y), sx(x + half), sy(y), sx(x), sy(y - hh), sx(x), sy(y - hh),
+                        alpha(0xE6, fade) | colors[k]);
+            }
+        }
+        for (int i = 0; i < 18; i++) {
+            double angle = i * 2.39996;
+            float rise = (time * 0.5f + i * 0.618f) % 1;
+            float x = zone.x + (float) Math.cos(angle) * zone.radius + (float) Math.sin(rise * 9 + i) * 2;
+            float y = zone.y + (float) Math.sin(angle) * zone.radius - 6 - rise * 26;
+            shapes.rect(sx(x), sy(y), sx(x + 1), sy(y + 2), alpha(0xFF, fade * (1 - rise)) | 0xFFDC78);
+        }
+    }
+
+    /** Dragon assist: a comet swoops in from the corner and bursts on the Pokémon. */
+    private void drawDragonComet(Shapes shapes, float targetX, float targetY) {
+        float u = dragonFx / DRAGON_FX_TIME;
+        if (u < 0.6f) {
+            float k = u / 0.6f;
+            for (int j = 11; j >= 0; j--) {
+                float kk = Math.max(0, k - j * 0.025f);
+                float x = -10 + (targetX + 10) * kk, y = 10 + (targetY - 10) * kk * kk;
+                float r = 6 - j * 0.45f;
+                int color = mix(0xFFF0DCFF, 0xFF6E3CF0, j / 12f) & 0xFFFFFF;
+                shapes.disc(sx(x), sy(y), r * scale, alpha(0xFF, 1 - j / 12f) | color);
+            }
+        } else {
+            float k = (u - 0.6f) / 0.4f;
+            for (int i = 0; i < 10; i++) {
+                double a = Math.PI * 2 * i / 10;
+                float r0 = 8 + k * 20;
+                shapes.line(sx(targetX + (float) Math.cos(a) * r0), sy(targetY + (float) Math.sin(a) * r0),
+                        sx(targetX + (float) Math.cos(a) * (r0 + 6)), sy(targetY + (float) Math.sin(a) * (r0 + 6)),
+                        2 * scale, alpha(0xFF, 1 - k) | 0xBE96FF);
+            }
+        }
     }
 
     private static int alpha(int alpha, float fade) {

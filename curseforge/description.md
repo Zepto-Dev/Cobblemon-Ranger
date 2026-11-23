@@ -93,7 +93,7 @@ Each sign costs 10 styler energy and has its own cooldown.
 - **16 colours.** Craft a styler from a glass pane, two iron ingots, redstone and a dye (pane on top, iron either side of the redstone, dye underneath). Combine a styler with a dye to recolour it without losing upgrades.
 - **Styler energy** is shown as durability. It recharges slowly while you carry the styler and can be topped up with redstone at an anvil. Stylers never break.
 - **Styler levels.** Captures and missions give your styler XP. Each level, up to Lv. 20, adds energy, line length and loop power.
-- **Upgrade modules** (Energy, Line Length, Loop Power) are found in structure chests: dungeons, mineshafts, temples, strongholds, ancient cities, shipwrecks, trial chambers and more. Apply one at a smithing table with a redstone block, string or amethyst shard.
+- **Upgrade modules** (Energy, Line Length, Loop Power) are found in structure chests: dungeons, mineshafts, temples, strongholds, ancient cities, shipwrecks, trial chambers and more. Install one at a **Ranger HQ Terminal** with a redstone block, string or amethyst shard. The terminal also charges your styler to full every 10 minutes and shows your current mission.
 
 ![Stylers](https://raw.githubusercontent.com/Zepto-Dev/Cobblemon-Ranger/main/curseforge/screenshots/14-stylers.png)
 

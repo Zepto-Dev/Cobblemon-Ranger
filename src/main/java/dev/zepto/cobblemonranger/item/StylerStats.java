@@ -11,7 +11,7 @@ import net.minecraft.world.item.ItemStack;
 
 /**
  * Upgrade levels of a Capture Styler. Each stat starts at 0 (shown as Lv. 1) and can be raised to {@link #MAX_LEVEL}
- * with upgrade modules at a smithing table.
+ * with upgrade modules at a Ranger HQ Terminal.
  */
 public record StylerStats(int energy, int line, int power) {
     public static final int MAX_LEVEL = 4;

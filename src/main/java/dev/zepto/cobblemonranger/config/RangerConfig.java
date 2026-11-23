@@ -9,6 +9,7 @@ public final class RangerConfig {
     public static final ModConfigSpec.IntValue CAPTURE_LEVEL_CAP_BASE;
     public static final ModConfigSpec.IntValue CAPTURE_LEVEL_CAP_PER_LEVEL;
     public static final ModConfigSpec.IntValue PARTNER_FIELD_MOVE_COOLDOWN_SECONDS;
+    public static final ModConfigSpec.IntValue HQ_CHARGE_COOLDOWN_MINUTES;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -27,6 +28,9 @@ public final class RangerConfig {
         PARTNER_FIELD_MOVE_COOLDOWN_SECONDS = builder
                 .comment("Seconds the Partner Pok\u00e9mon rests after using a field move before it can use another.")
                 .defineInRange("partnerFieldMoveCooldownSeconds", 4, 0, 600);
+        HQ_CHARGE_COOLDOWN_MINUTES = builder
+                .comment("Real-time minutes a player waits between styler recharges at a Ranger HQ Terminal.")
+                .defineInRange("hqChargeCooldownMinutes", 10, 0, 360);
         SPEC = builder.build();
     }
 
@@ -49,5 +53,9 @@ public final class RangerConfig {
 
     public static int partnerFieldMoveCooldownTicks() {
         return PARTNER_FIELD_MOVE_COOLDOWN_SECONDS.get() * 20;
+    }
+
+    public static long hqChargeCooldownTicks() {
+        return HQ_CHARGE_COOLDOWN_MINUTES.get() * 20L * 60L;
     }
 }

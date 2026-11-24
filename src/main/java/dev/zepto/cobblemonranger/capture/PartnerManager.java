@@ -1,5 +1,7 @@
 package dev.zepto.cobblemonranger.capture;
 
+import dev.zepto.cobblemonranger.browser.BrowserManager;
+import dev.zepto.cobblemonranger.browser.GuidePage;
 import com.cobblemon.mod.common.Cobblemon;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
@@ -75,6 +77,7 @@ public final class PartnerManager {
         level.playSound(null, entity.blockPosition(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.8f, 1.8f);
         player.displayClientMessage(Component.translatable("message.cobblemonranger.partner_set", entity.getName()),
                 false);
+        BrowserManager.unlock(player, GuidePage.PARTNER);
     }
 
     public static void clearPartner(ServerPlayer player) {

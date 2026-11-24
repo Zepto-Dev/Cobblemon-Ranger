@@ -9,6 +9,7 @@ import com.cobblemon.mod.common.battles.pokemon.BattlePokemon;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import dev.zepto.cobblemonranger.CobblemonRanger;
+import dev.zepto.cobblemonranger.browser.BrowserManager;
 import dev.zepto.cobblemonranger.item.StylerItem;
 import dev.zepto.cobblemonranger.item.StylerProgress;
 import dev.zepto.cobblemonranger.mission.MissionManager;
@@ -86,7 +87,8 @@ public final class CaptureManager {
         int charmUses;
         /** Loops around the Pokémon the client reported, at most one every {@link #MIN_LOOP_TICKS}. */
         int loops;
-        long lastLoopTick = Long.MIN_VALUE;
+        // Far enough back that the first loop always counts (Long.MIN_VALUE would overflow the subtraction).
+        long lastLoopTick = -1000;
 
         AssistLog(UUID partnerId, int partnerCharge) {
             this.partnerId = partnerId;
@@ -406,6 +408,7 @@ public final class CaptureManager {
         StylerItem.addXp(player, styler, xp);
         PartnerManager.rewardPartner(player, 2);
         MissionManager.onCapture(player, pokemon);
+        BrowserManager.onCapture(player, pokemon, styler);
     }
 
     private static void unfreeze(Entity entity, boolean wasNoAi) {

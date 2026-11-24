@@ -1,5 +1,7 @@
 package dev.zepto.cobblemonranger.mission;
 
+import dev.zepto.cobblemonranger.browser.BrowserManager;
+import dev.zepto.cobblemonranger.browser.GuidePage;
 import com.cobblemon.mod.common.api.types.ElementalType;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import dev.zepto.cobblemonranger.config.RangerConfig;
@@ -144,6 +146,7 @@ public final class MissionManager {
         }
         int tier = tierFor(villager, data.rank());
         Mission mission = generate(villager, tier, player.getRandom());
+        BrowserManager.unlock(player, GuidePage.MISSIONS);
         OFFERS.put(player.getUUID(), new Offer(mission, now + OFFER_TICKS));
         villager.playSound(SoundEvents.VILLAGER_TRADE, 1f, 1f);
         MutableComponent accept = Component.translatable("message.cobblemonranger.mission_accept")
@@ -165,6 +168,27 @@ public final class MissionManager {
                     tierName(villager.getVillagerData().getLevel())).withStyle(ChatFormatting.GRAY));
         }
         player.sendSystemMessage(Component.empty().append(accept).append("  ").append(decline));
+    }
+
+    /** Announces a new rank and whatever it unlocks; does nothing if the rank didn't change. */
+    public static void announceRankUp(ServerPlayer player, int oldRank, int newRank) {
+        if (newRank <= oldRank) {
+            return;
+        }
+        player.serverLevel().playSound(null, player.blockPosition(), SoundEvents.UI_TOAST_CHALLENGE_COMPLETE,
+                SoundSource.PLAYERS, 1f, 1f);
+        player.sendSystemMessage(Component.translatable("message.cobblemonranger.rank_up", newRank,
+                RangerManager.rankTitle(newRank)).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
+        for (RangerSign sign : RangerSign.values()) {
+            if (sign.rank() > oldRank && sign.rank() <= newRank) {
+                player.sendSystemMessage(Component.translatable("message.cobblemonranger.sign_unlocked",
+                        sign.displayName()).withStyle(ChatFormatting.AQUA));
+            }
+        }
+        if (maxTierForRank(newRank) > maxTierForRank(oldRank)) {
+            player.sendSystemMessage(Component.translatable("message.cobblemonranger.tier_unlocked",
+                    tierName(maxTierForRank(newRank))).withStyle(ChatFormatting.AQUA));
+        }
     }
 
     public static Component tierName(int tier) {
@@ -281,22 +305,8 @@ public final class MissionManager {
             RangerHq.addMissionXp(player, villager);
         }
 
-        if (newRank > oldRank) {
-            player.serverLevel().playSound(null, player.blockPosition(), SoundEvents.UI_TOAST_CHALLENGE_COMPLETE,
-                    SoundSource.PLAYERS, 1f, 1f);
-            player.sendSystemMessage(Component.translatable("message.cobblemonranger.rank_up", newRank,
-                    RangerManager.rankTitle(newRank)).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
-            for (RangerSign sign : RangerSign.values()) {
-                if (sign.rank() > oldRank && sign.rank() <= newRank) {
-                    player.sendSystemMessage(Component.translatable("message.cobblemonranger.sign_unlocked",
-                            sign.displayName()).withStyle(ChatFormatting.AQUA));
-                }
-            }
-            if (maxTierForRank(newRank) > maxTierForRank(oldRank)) {
-                player.sendSystemMessage(Component.translatable("message.cobblemonranger.tier_unlocked",
-                        tierName(maxTierForRank(newRank))).withStyle(ChatFormatting.AQUA));
-            }
-        }
+        announceRankUp(player, oldRank, newRank);
+        BrowserManager.unlock(player, GuidePage.SIGNS);
     }
 
     private static void give(ServerPlayer player, ItemStack stack) {

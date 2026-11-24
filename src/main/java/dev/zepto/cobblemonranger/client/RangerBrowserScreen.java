@@ -1,0 +1,374 @@
+package dev.zepto.cobblemonranger.client;
+
+import com.cobblemon.mod.common.api.pokemon.PokemonSpecies;
+import com.cobblemon.mod.common.api.types.ElementalType;
+import com.cobblemon.mod.common.pokemon.Species;
+import dev.zepto.cobblemonranger.browser.BrowserData;
+import dev.zepto.cobblemonranger.browser.BrowserManager;
+import dev.zepto.cobblemonranger.browser.GuidePage;
+import dev.zepto.cobblemonranger.capture.PartnerCharge;
+import dev.zepto.cobblemonranger.config.RangerConfig;
+import dev.zepto.cobblemonranger.field.FieldMoveManager;
+import dev.zepto.cobblemonranger.network.GuideReadPayload;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.util.FormattedCharSequence;
+import net.neoforged.neoforge.network.PacketDistributor;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
+/**
+ * The Ranger Browser, opened from the styler: a log of every species befriended, and the Ranger Guide, a tutorial
+ * page per feature of the mod.
+ */
+public class RangerBrowserScreen extends Screen {
+    private static final int ACCENT = 0xFF5BC0EB;
+    private static final int PANEL = 0xF0101820;
+    private static final int CELL = 0xFF1C2A36;
+    private static final int CELL_HOVER = 0xFF29404F;
+    private static final int TEXT_DIM = 0xFF6A7C8C;
+    private static final int GOLD = 0xFFFFC94A;
+    private static final int CELL_WIDTH = 82;
+    private static final int CELL_HEIGHT = 20;
+    private static final int TAB_HEIGHT = 16;
+    private static final int PAGE_LIST_WIDTH = 124;
+
+    private enum Tab { BROWSER, GUIDE }
+
+    /** Remembered while the game runs, so the screen reopens where it was left. */
+    private static Tab lastTab = Tab.BROWSER;
+    private static GuidePage lastPage = GuidePage.STYLER;
+    private static boolean lastOnlyBefriended;
+
+    private Tab tab = lastTab;
+    private GuidePage page = lastPage;
+    private boolean onlyBefriended = lastOnlyBefriended;
+    private final List<Species> allSpecies = new ArrayList<>();
+    private List<Species> shown = new ArrayList<>();
+    private int left, top, panelWidth, panelHeight;
+    private double browserScroll, guideScroll;
+
+    public RangerBrowserScreen() {
+        super(Component.translatable("screen.cobblemonranger.browser"));
+    }
+
+    @Override
+    protected void init() {
+        panelWidth = Math.min(width - 16, 380);
+        panelHeight = Math.min(height - 16, 240);
+        left = (width - panelWidth) / 2;
+        top = (height - panelHeight) / 2;
+        allSpecies.clear();
+        allSpecies.addAll(PokemonSpecies.getImplemented());
+        allSpecies.sort(Comparator.comparingInt(Species::getNationalPokedexNumber));
+        refilter();
+        if (tab == Tab.GUIDE) {
+            openPage(page);
+        }
+    }
+
+    @Override
+    public boolean isPauseScreen() {
+        return false;
+    }
+
+    @Override
+    public void onClose() {
+        lastTab = tab;
+        lastPage = page;
+        lastOnlyBefriended = onlyBefriended;
+        super.onClose();
+    }
+
+    private void refilter() {
+        shown = onlyBefriended ? allSpecies.stream()
+                .filter(s -> ClientBrowserData.entryFor(s.getResourceIdentifier().toString()) != null).toList()
+                : List.copyOf(allSpecies);
+        browserScroll = 0;
+    }
+
+    private void openPage(GuidePage newPage) {
+        if (!ClientBrowserData.isUnlocked(newPage)) {
+            return;
+        }
+        if (newPage != page) {
+            guideScroll = 0;
+        }
+        page = newPage;
+        if (ClientBrowserData.isNew(newPage)) {
+            ClientBrowserData.markReadLocally(newPage);
+            PacketDistributor.sendToServer(new GuideReadPayload(newPage.id()));
+        }
+    }
+
+    // ------------------------------------------------------------------ layout
+
+    private int contentTop() {
+        return top + TAB_HEIGHT + 6;
+    }
+
+    private int tabX(Tab t) {
+        return left + 6 + t.ordinal() * 78;
+    }
+
+    private int gridTop() {
+        return contentTop() + 16;
+    }
+
+    private int gridBottom() {
+        return top + panelHeight - 6;
+    }
+
+    private int columns() {
+        return Math.max(1, (panelWidth - 12) / CELL_WIDTH);
+    }
+
+    private int maxBrowserScroll() {
+        int rows = (shown.size() + columns() - 1) / columns();
+        return Math.max(0, rows * CELL_HEIGHT - (gridBottom() - gridTop()));
+    }
+
+    private int textLeft() {
+        return left + 6 + PAGE_LIST_WIDTH + 8;
+    }
+
+    private int textWidth() {
+        return left + panelWidth - 8 - textLeft();
+    }
+
+    // ------------------------------------------------------------------ rendering
+
+    @Override
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        super.render(graphics, mouseX, mouseY, partialTick);
+        graphics.fill(left - 1, top - 1, left + panelWidth + 1, top + panelHeight + 1, ACCENT);
+        graphics.fill(left, top, left + panelWidth, top + panelHeight, PANEL);
+        drawTab(graphics, Tab.BROWSER, Component.translatable("screen.cobblemonranger.browser.tab"), mouseX, mouseY,
+                false);
+        drawTab(graphics, Tab.GUIDE, Component.translatable("screen.cobblemonranger.guide.tab"), mouseX, mouseY,
+                ClientBrowserData.hasNewPages());
+        if (tab == Tab.BROWSER) {
+            renderBrowser(graphics, mouseX, mouseY);
+        } else {
+            renderGuide(graphics, mouseX, mouseY);
+        }
+    }
+
+    private void drawTab(GuiGraphics graphics, Tab t, Component label, int mouseX, int mouseY, boolean badge) {
+        int x = tabX(t);
+        int y = top + 4;
+        boolean selected = tab == t;
+        boolean hover = mouseX >= x && mouseX < x + 74 && mouseY >= y && mouseY < y + TAB_HEIGHT;
+        graphics.fill(x, y, x + 74, y + TAB_HEIGHT, selected ? ACCENT : hover ? CELL_HOVER : CELL);
+        graphics.drawCenteredString(font, label, x + 37, y + 4, selected ? 0xFF101820 : 0xFFFFFFFF);
+        if (badge) {
+            graphics.fill(x + 68, y + 2, x + 72, y + 6, GOLD);
+        }
+    }
+
+    private void renderBrowser(GuiGraphics graphics, int mouseX, int mouseY) {
+        int count = ClientBrowserData.speciesCount();
+        Component header = Component.translatable("screen.cobblemonranger.browser.count", count, allSpecies.size());
+        int next = nextMilestone(count);
+        if (next > 0) {
+            header = header.copy().append(Component.translatable("screen.cobblemonranger.browser.next", next));
+        }
+        graphics.drawString(font, header, left + 8, contentTop() + 2, 0xFFFFFFFF, false);
+        Component filter = Component.translatable(onlyBefriended ? "screen.cobblemonranger.browser.filter_befriended"
+                : "screen.cobblemonranger.browser.filter_all");
+        int fw = font.width(filter) + 8;
+        int fx = left + panelWidth - 8 - fw;
+        boolean fHover = mouseX >= fx && mouseX < fx + fw && mouseY >= contentTop() && mouseY < contentTop() + 12;
+        graphics.fill(fx, contentTop(), fx + fw, contentTop() + 12, fHover ? CELL_HOVER : CELL);
+        graphics.drawString(font, filter, fx + 4, contentTop() + 2, ACCENT, false);
+
+        int cols = columns();
+        int gridLeft = left + (panelWidth - cols * CELL_WIDTH) / 2;
+        graphics.enableScissor(left, gridTop(), left + panelWidth, gridBottom());
+        Species hovered = null;
+        BrowserData.Entry hoveredEntry = null;
+        for (int i = 0; i < shown.size(); i++) {
+            int x = gridLeft + (i % cols) * CELL_WIDTH;
+            int y = gridTop() + (i / cols) * CELL_HEIGHT - (int) browserScroll;
+            if (y + CELL_HEIGHT < gridTop() || y > gridBottom()) {
+                continue;
+            }
+            Species species = shown.get(i);
+            BrowserData.Entry entry = ClientBrowserData.entryFor(species.getResourceIdentifier().toString());
+            boolean hover = mouseX >= x && mouseX < x + CELL_WIDTH - 2 && mouseY >= y && mouseY < y + CELL_HEIGHT - 2
+                    && mouseY >= gridTop() && mouseY < gridBottom();
+            graphics.fill(x, y, x + CELL_WIDTH - 2, y + CELL_HEIGHT - 2, hover ? CELL_HOVER : CELL);
+            if (entry != null) {
+                graphics.fill(x, y, x + 2, y + CELL_HEIGHT - 2, 0xFF000000 | species.getPrimaryType().getHue());
+            }
+            graphics.drawString(font, String.format("%04d", species.getNationalPokedexNumber()), x + 4, y + 1,
+                    TEXT_DIM, false);
+            Component name = entry != null ? species.getTranslatedName() : Component.literal("???");
+            graphics.drawString(font, font.plainSubstrByWidth(name.getString(), CELL_WIDTH - 14), x + 4, y + 9,
+                    entry != null ? 0xFFFFFFFF : TEXT_DIM, false);
+            if (entry != null && entry.alpha()) {
+                graphics.drawString(font, "α", x + CELL_WIDTH - 10, y + 1, GOLD, false);
+            }
+            if (hover) {
+                hovered = species;
+                hoveredEntry = entry;
+            }
+        }
+        graphics.disableScissor();
+        if (shown.isEmpty()) {
+            graphics.drawCenteredString(font, Component.translatable("screen.cobblemonranger.browser.empty"),
+                    left + panelWidth / 2, gridTop() + 30, TEXT_DIM);
+        }
+        if (hovered != null) {
+            graphics.renderComponentTooltip(font, tooltip(hovered, hoveredEntry), mouseX, mouseY);
+        }
+    }
+
+    private List<Component> tooltip(Species species, BrowserData.Entry entry) {
+        List<Component> lines = new ArrayList<>();
+        if (entry == null) {
+            lines.add(Component.literal("#" + species.getNationalPokedexNumber() + " ???"));
+            lines.add(Component.translatable("screen.cobblemonranger.browser.not_yet").withColor(TEXT_DIM));
+            return lines;
+        }
+        lines.add(Component.literal("#" + species.getNationalPokedexNumber() + " ").append(species.getTranslatedName()));
+        MutableComponent types = Component.empty();
+        for (ElementalType type : species.getTypes()) {
+            if (!types.getSiblings().isEmpty()) {
+                types.append(" / ");
+            }
+            types.append(type.getDisplayName().copy().withColor(0xFF000000 | type.getHue()));
+        }
+        lines.add(types);
+        lines.add(Component.translatable("screen.cobblemonranger.browser.times", entry.count()).withColor(ACCENT));
+        if (entry.alpha()) {
+            lines.add(Component.translatable("screen.cobblemonranger.browser.alpha").withColor(GOLD));
+        }
+        return lines;
+    }
+
+    private static int nextMilestone(int count) {
+        for (int milestone : BrowserManager.MILESTONES) {
+            if (count < milestone) {
+                return milestone;
+            }
+        }
+        return -1;
+    }
+
+    private void renderGuide(GuiGraphics graphics, int mouseX, int mouseY) {
+        int y = contentTop();
+        for (GuidePage p : GuidePage.values()) {
+            boolean unlocked = ClientBrowserData.isUnlocked(p);
+            boolean hover = unlocked && mouseX >= left + 6 && mouseX < left + 6 + PAGE_LIST_WIDTH && mouseY >= y
+                    && mouseY < y + 16;
+            graphics.fill(left + 6, y, left + 6 + PAGE_LIST_WIDTH, y + 15,
+                    p == page ? ACCENT : hover ? CELL_HOVER : CELL);
+            Component title = unlocked ? p.title() : Component.literal("???");
+            int color = p == page ? 0xFF101820 : unlocked ? 0xFFFFFFFF : TEXT_DIM;
+            boolean isNew = ClientBrowserData.isNew(p);
+            Component badge = Component.translatable("screen.cobblemonranger.guide.new");
+            int titleWidth = PAGE_LIST_WIDTH - 8 - (isNew ? font.width(badge) + 4 : 0);
+            graphics.drawString(font, font.plainSubstrByWidth(title.getString(), titleWidth), left + 10,
+                    y + 4, color, false);
+            if (isNew) {
+                graphics.drawString(font, badge, left + 6 + PAGE_LIST_WIDTH - 4 - font.width(badge), y + 4, GOLD,
+                        false);
+            }
+            y += 17;
+        }
+
+        int textTop = contentTop();
+        int textBottom = top + panelHeight - 6;
+        List<FormattedCharSequence> lines = pageLines();
+        int maxScroll = Math.max(0, lines.size() * 10 + 14 - (textBottom - textTop));
+        guideScroll = Math.max(0, Math.min(guideScroll, maxScroll));
+        graphics.enableScissor(textLeft(), textTop, textLeft() + textWidth(), textBottom);
+        int ty = textTop - (int) guideScroll;
+        graphics.drawString(font, page.title(), textLeft(), ty, ACCENT, false);
+        ty += 14;
+        for (FormattedCharSequence line : lines) {
+            graphics.drawString(font, line, textLeft(), ty, 0xFFE0E6EB, false);
+            ty += 10;
+        }
+        graphics.disableScissor();
+    }
+
+    private List<FormattedCharSequence> pageLines() {
+        Component body = Component.translatable("guide.cobblemonranger." + page.id() + ".body", pageArgs(page));
+        List<FormattedCharSequence> lines = new ArrayList<>();
+        for (String paragraph : body.getString().split("\n")) {
+            if (paragraph.isEmpty()) {
+                lines.add(FormattedCharSequence.EMPTY);
+            } else {
+                lines.addAll(font.split(Component.literal(paragraph), textWidth()));
+            }
+        }
+        return lines;
+    }
+
+    /** Numbers from the server's settings, so the Guide always matches the world it's read in. */
+    private static Object[] pageArgs(GuidePage page) {
+        return switch (page) {
+            case STYLER -> new Object[]{RangerConfig.current(RangerConfig.STYLER_RECHARGE_SECONDS),
+                    RangerConfig.current(RangerConfig.HQ_CHARGE_COOLDOWN_MINUTES)};
+            case CAPTURING -> new Object[]{RangerConfig.current(RangerConfig.CAPTURE_LEVEL_CAP_BASE),
+                    RangerConfig.current(RangerConfig.CAPTURE_LEVEL_CAP_PER_LEVEL)};
+            case BROWSER -> new Object[]{BrowserManager.NEW_SPECIES_XP, BrowserManager.MILESTONES[0],
+                    BrowserManager.MILESTONES[BrowserManager.MILESTONES.length - 1]};
+            case ASSISTS -> new Object[]{PartnerCharge.FULL};
+            case PARTNER -> new Object[]{FieldMoveManager.PARTNER_ENERGY_COST,
+                    RangerConfig.current(RangerConfig.PARTNER_FIELD_MOVE_COOLDOWN_SECONDS)};
+            case MISSIONS -> new Object[]{RangerConfig.current(RangerConfig.MISSION_COOLDOWN_MINUTES)};
+            case SIGNS -> new Object[]{RangerConfig.current(RangerConfig.WORLD_SIGN_PERSONAL_COOLDOWN_MINUTES),
+                    RangerConfig.current(RangerConfig.WORLD_SIGN_SHARED_COOLDOWN_MINUTES)};
+            default -> new Object[0];
+        };
+    }
+
+    // ------------------------------------------------------------------ input
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == 0) {
+            for (Tab t : Tab.values()) {
+                int x = tabX(t);
+                if (mouseX >= x && mouseX < x + 74 && mouseY >= top + 4 && mouseY < top + 4 + TAB_HEIGHT) {
+                    tab = t;
+                    if (t == Tab.GUIDE) {
+                        openPage(page);
+                    }
+                    return true;
+                }
+            }
+            if (tab == Tab.BROWSER && mouseY >= contentTop() && mouseY < contentTop() + 12
+                    && mouseX >= left + panelWidth / 2) {
+                onlyBefriended = !onlyBefriended;
+                refilter();
+                return true;
+            }
+            if (tab == Tab.GUIDE && mouseX >= left + 6 && mouseX < left + 6 + PAGE_LIST_WIDTH) {
+                int index = (int) ((mouseY - contentTop()) / 17);
+                if (mouseY >= contentTop() && index >= 0 && index < GuidePage.values().length) {
+                    openPage(GuidePage.values()[index]);
+                    return true;
+                }
+            }
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (tab == Tab.BROWSER) {
+            browserScroll = Math.max(0, Math.min(maxBrowserScroll(), browserScroll - scrollY * CELL_HEIGHT));
+        } else {
+            guideScroll = Math.max(0, guideScroll - scrollY * 20);
+        }
+        return true;
+    }
+}

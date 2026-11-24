@@ -532,10 +532,7 @@ def rock_drums(song, bars, fills=(7, 15), crashes=(0, 8)):
         song.place("drums", drum("c"), bar * 4, 0.85)
 
 
-def capture_d():
-    """'Rapid Pursuit': C minor, 176 bpm. Brass lead, string ostinato, electric bass, rock drums."""
-    s = Song(176, 16)
-    lead = parse(
+D_LEAD = (
         "G4:0.5 C5:0.5 Eb5:0.5 G5:1 F5:0.5 Eb5:0.5 D5:0.5 | Eb5:1.5 C5:0.5 G4:2 |"
         "Ab4:0.5 C5:0.5 Eb5:0.5 Ab5:1 G5:0.5 F5:0.5 Eb5:0.5 | F5:1.5 D5:0.5 Bb4:1 D5:1 |"
         "G5:0.5 G5:0.5 G5:0.5 Ab5:0.5 G5:1 Eb5:1 | C6:1.5 Bb5:0.5 G5:1 Eb5:1 |"
@@ -544,8 +541,15 @@ def capture_d():
         "G5:1 D5:0.5 G5:0.5 Bb5:1 Ab5:0.5 G5:0.5 | Eb5:3 G5:0.5 C6:0.5 |"
         "Eb6:1.5 C6:0.5 Ab5:1 C6:1 | D6:1.5 Bb5:0.5 F5:1 Bb5:1 |"
         "G5:0.5 Bb5:0.5 Eb6:1 F6:0.5 D6:0.5 Bb5:1 | B5:1 D6:1 G6:2")
-    chords = chord_list("C:min C:min Ab:maj Bb:maj C:min C:min Ab:maj,Bb:maj G:maj "
+D_CHORDS = ("C:min C:min Ab:maj Bb:maj C:min C:min Ab:maj,Bb:maj G:maj "
                         "Ab:maj Bb:maj G:min C:min Ab:maj Bb:maj Eb:maj,Bb:maj G:maj")
+
+
+def capture_d():
+    """'Rapid Pursuit': C minor, 176 bpm. Brass lead, string ostinato, electric bass, rock drums."""
+    s = Song(176, 16)
+    lead = parse(D_LEAD)
+    chords = chord_list(D_CHORDS)
     s.melody("lead", lead, brass, legato=0.95)
     s.melody("double", lead, lambda f, d: pulse(f, d, duty=0.25), transpose=-12)
     ostinato(s, "strings", chords)
@@ -555,10 +559,7 @@ def capture_d():
                  verb=0.14, pans={"double": 0.3, "strings": -0.3})
 
 
-def capture_e():
-    """'Styler Rush': A minor, 172 bpm. Synth-and-brass unison lead, syncopated hits, pulsing strings."""
-    s = Song(172, 16)
-    lead = parse(
+E_LEAD = (
         "A4:0.75 C5:0.75 E5:0.5 A5:0.5 G5:0.5 E5:1 | F5:0.75 E5:0.75 C5:0.5 A4:2 |"
         "G4:0.75 B4:0.75 D5:0.5 G5:0.5 F5:0.5 D5:1 | E5:2 r:0.5 A4:0.5 B4:0.5 C5:0.5 |"
         "E5:0.75 A5:0.75 C6:0.5 B5:0.5 A5:0.5 E5:1 | F5:0.75 A5:0.75 C6:0.5 D6:1 C6:1 |"
@@ -567,8 +568,15 @@ def capture_e():
         "F5:0.5 G5:0.5 A5:0.5 C6:0.5 F6:1 E6:1 | D6:1.5 B5:0.5 G5:2 |"
         "A5:0.5 D6:0.5 F6:1 E6:0.5 D6:0.5 C6:1 | E6:1.5 C6:0.5 A5:2 |"
         "F6:0.75 E6:0.75 D6:0.5 C6:0.5 B5:0.5 A5:1 | G#5:1 B5:1 E6:1 r:1")
-    chords = chord_list("A:min F:maj G:maj A:min A:min F:maj G:maj E:maj "
+E_CHORDS = ("A:min F:maj G:maj A:min A:min F:maj G:maj E:maj "
                         "D:min A:min F:maj G:maj D:min A:min F:maj E:maj")
+
+
+def capture_e():
+    """'Styler Rush': A minor, 172 bpm. Synth-and-brass unison lead, syncopated hits, pulsing strings."""
+    s = Song(172, 16)
+    lead = parse(E_LEAD)
+    chords = chord_list(E_CHORDS)
     s.melody("lead", lead, lambda f, d: pulse(f, d, duty=0.25), legato=0.9)
     s.melody("brass", lead, brass, legato=0.9)
     # chord hits on the syncopated 1, and-of-2, 4 of every bar
@@ -584,10 +592,7 @@ def capture_e():
                  verb=0.13, pans={"lead": 0.2, "hits": -0.25, "strings": 0.3})
 
 
-def capture_f():
-    """'Ridge Runner': G minor, 164 bpm. Heroic brass with a string counter-line, timpani and rock drums."""
-    s = Song(164, 16)
-    lead = parse(
+F_LEAD = (
         "D5:1 G5:1 Bb5:1.5 A5:0.5 | G5:1 Eb5:1 Bb4:2 |"
         "C5:0.5 F5:0.5 A5:1 C6:1.5 Bb5:0.5 | A5:2 F#5:1 D5:1 |"
         "D5:1 G5:1 Bb5:1 D6:1 | Eb6:1.5 D6:0.5 Bb5:1 G5:1 |"
@@ -596,13 +601,20 @@ def capture_f():
         "D6:1 C6:0.5 Bb5:0.5 F5:1 Bb5:1 | G5:3 D5:1 |"
         "G5:0.5 Bb5:0.5 Eb6:1 D6:1 C6:1 | A5:0.5 C6:0.5 F6:1 Eb6:1 D6:1 |"
         "Eb6:1 C6:1 D6:1 A5:1 | F#5:1 A5:1 D6:2")
+F_CHORDS = ("G:min Eb:maj F:maj D:maj G:min Eb:maj C:min D:maj "
+                        "Eb:maj F:maj Bb:maj G:min Eb:maj F:maj C:min,D:maj D:maj")
+
+
+def capture_f():
+    """'Ridge Runner': G minor, 164 bpm. Heroic brass with a string counter-line, timpani and rock drums."""
+    s = Song(164, 16)
+    lead = parse(F_LEAD)
     counter = parse(
         "Bb4:2 D5:2 | Eb5:2 G4:2 | A4:2 F4:2 | F#4:2 A4:2 |"
         "Bb4:2 G4:2 | G4:2 Bb4:2 | Eb5:2 C5:2 | F#4:2 D4:2 |"
         "G4:2 Bb4:2 | A4:2 C5:2 | F4:2 D4:2 | Bb4:2 D5:2 |"
         "Eb5:2 G4:2 | F4:2 A4:2 | G4:2 F#4:2 | A4:2 F#4:2")
-    chords = chord_list("G:min Eb:maj F:maj D:maj G:min Eb:maj C:min D:maj "
-                        "Eb:maj F:maj Bb:maj G:min Eb:maj F:maj C:min,D:maj D:maj")
+    chords = chord_list(F_CHORDS)
     s.melody("lead", lead, brass, legato=0.97)
     s.melody("counter", counter, lambda f, d: strings(f, d, a=0.06), legato=1.0)
     ostinato(s, "ostinato", chords, pattern=(0, 2, 0, 3))
@@ -647,28 +659,212 @@ def fanfare(bpm, lead, chords_spec, final_note, final_chord, roll=True, run=None
     return s.mix({"lead": 0.55, "double": 0.1, "strings": 0.4, "bass": 0.4, "drums": 0.55}, loop=False, verb=0.22)
 
 
+VICTORY_SPECS = {
+    # bpm, lead, chords (beat, root, quality, beats), final note, final chord, timpani roll, string run
+    "D": (160, "C5:0.5 E5:0.5 G5:0.5 C6:1 A5:0.5 B5:0.5 D6:0.5",
+          [(0, "C", "maj", 2.5), (2.5, "F", "maj", 0.5), (3, "G", "maj", 1)], "C6", ("C", "maj"), True, None),
+    "E": (170, "E5:0.333 A5:0.333 C#6:0.334 E6:1 D6:0.5 C#6:0.5 B5:0.5 C#6:0.5",
+          [(0, "A", "maj", 2), (2, "D", "maj", 1), (3, "E", "maj", 1)], "A5", ("A", "maj"), False,
+          "E4:0.25 F#4:0.25 G#4:0.25 B4:0.25 r:3"),
+    "F": (150, "F5:0.75 Bb5:0.25 D6:1 Eb6:0.5 C6:0.5 D6:1",
+          [(0, "Bb", "maj", 2), (2, "Eb", "maj", 0.5), (2.5, "F", "maj", 0.5), (3, "Bb", "maj", 1)],
+          "Bb5", ("Bb", "maj"), True, None),
+}
+
+
 def victory_d():
     """Bright C major fanfare (lands in the major after capture D's C minor), with a timpani roll in."""
-    return fanfare(160, "C5:0.5 E5:0.5 G5:0.5 C6:1 A5:0.5 B5:0.5 D6:0.5",
-                   [(0, "C", "maj", 2.5), (2.5, "F", "maj", 0.5), (3, "G", "maj", 1)], "C6", ("C", "maj"))
+    bpm, lead, chords, final, final_chord, roll, run = VICTORY_SPECS["D"]
+    return fanfare(bpm, lead, chords, final, final_chord, roll=roll, run=run)
 
 
 def victory_e():
     """Quick A major flourish: a string run up into a triplet brass climb."""
-    return fanfare(170, "E5:0.333 A5:0.333 C#6:0.334 E6:1 D6:0.5 C#6:0.5 B5:0.5 C#6:0.5",
-                   [(0, "A", "maj", 2), (2, "D", "maj", 1), (3, "E", "maj", 1)], "A5", ("A", "maj"),
-                   roll=False, run="E4:0.25 F#4:0.25 G#4:0.25 B4:0.25 r:3")
+    bpm, lead, chords, final, final_chord, roll, run = VICTORY_SPECS["E"]
+    return fanfare(bpm, lead, chords, final, final_chord, roll=roll, run=run)
 
 
 def victory_f():
     """Broad Bb major fanfare with a dotted pickup, timpani roll and a held tonic chord."""
-    return fanfare(150, "F5:0.75 Bb5:0.25 D6:1 Eb6:0.5 C6:0.5 D6:1",
-                   [(0, "Bb", "maj", 2), (2, "Eb", "maj", 0.5), (2.5, "F", "maj", 0.5), (3, "Bb", "maj", 1)],
-                   "Bb5", ("Bb", "maj"))
+    bpm, lead, chords, final, final_chord, roll, run = VICTORY_SPECS["F"]
+    return fanfare(bpm, lead, chords, final, final_chord, roll=roll, run=run)
 
 
-CAPTURE = {"A": capture_a, "B": capture_b, "C": capture_c, "D": capture_d, "E": capture_e, "F": capture_f}
-VICTORY = {"A": victory_a, "B": victory_b, "C": victory_c, "D": victory_d, "E": victory_e, "F": victory_f}
+# ---- Round 3: note block versions. Every voice is a short, dry, plucked hit like Minecraft's note blocks
+# (synthesised here, not sampled), timing snaps to the redstone tick (a 16th note = 0.1 s at 150 bpm), and each
+# instrument only plays inside its two-octave note block range, folding other notes by octaves.
+
+NB_BPM = 150
+NB_RANGES = {  # lowest midi note of each instrument's 2-octave range (F#3 = 54 for harp)
+    "harp": 54, "pling": 54, "bass": 30, "bell": 78, "flute": 66, "xylo": 78, "chime": 78, "bit": 54, "guitar": 42,
+}
+
+
+def nb_fold(m, inst):
+    lo = NB_RANGES[inst]
+    while m < lo:
+        m += 12
+    while m > lo + 24:
+        m -= 12
+    return m
+
+
+def nb_voice(inst, f):
+    """One note block hit. Durations are fixed per instrument, as with the game's samples."""
+    if inst == "harp":  # soft plucked tone
+        t = np.arange(int(1.1 * SR)) / SR
+        sig = sum(a * np.sin(2 * np.pi * f * k * t) * np.exp(-t * (3 + 2.5 * k)) for k, a in ((1, 1), (2, 0.35), (3, 0.12)))
+        return sig * np.clip(t / 0.003, 0, 1) * 0.5
+    if inst == "pling":  # bright electric-piano ping
+        t = np.arange(int(1.0 * SR)) / SR
+        mod = 1.6 * np.exp(-t * 6) * np.sin(2 * np.pi * f * t)
+        return np.sin(2 * np.pi * f * t + mod) * np.exp(-t * 3.2) * np.clip(t / 0.002, 0, 1) * 0.5
+    if inst == "bass":  # plucked upright bass
+        t = np.arange(int(0.6 * SR)) / SR
+        sig = np.sin(2 * np.pi * f * t) + 0.4 * np.sin(4 * np.pi * f * t) * np.exp(-t * 12)
+        return sig * np.exp(-t * 6) * np.clip(t / 0.004, 0, 1) * 0.8
+    if inst == "bell":
+        return bell(f, 0.0, ratio=3.5, index=1.6, decay=3.2) * 1.2
+    if inst == "chime":
+        return bell(f, 0.0, ratio=2.76, index=1.0, decay=2.0)
+    if inst == "xylo":  # short wooden mallet
+        t = np.arange(int(0.35 * SR)) / SR
+        sig = np.sin(2 * np.pi * f * t) + 0.3 * np.sin(2 * np.pi * f * 3.93 * t) * np.exp(-t * 30)
+        return sig * np.exp(-t * 14) * 0.6
+    if inst == "flute":
+        t = np.arange(int(0.55 * SR)) / SR
+        env = np.clip(t / 0.03, 0, 1) * np.exp(-t * 4)
+        return (np.sin(2 * np.pi * f * t) + 0.15 * np.sin(4 * np.pi * f * t)) * env * 0.55
+    if inst == "bit":
+        return pulse(f, 0.12, duty=0.5, vib=False, a=0.001, d=0.05, s=0.5, r=0.05) * 0.5
+    if inst == "guitar":
+        t = np.arange(int(0.7 * SR)) / SR
+        sig = sum(np.sin(2 * np.pi * f * k * t) / k * np.exp(-t * (4 + 3 * k)) for k in range(1, 6))
+        return sig * 0.5
+    raise ValueError(inst)
+
+
+def nb_drum(kind):
+    if kind == "k":  # bass drum: thud
+        t = np.arange(int(0.12 * SR)) / SR
+        return np.sin(2 * np.pi * np.cumsum(60 + 80 * np.exp(-t * 50)) / SR) * np.exp(-t * 30) * 0.9
+    if kind == "s":  # snare: short noise burst
+        t = np.arange(int(0.08 * SR)) / SR
+        return NOISE[: len(t)] * np.exp(-t * 45) * 0.45
+    if kind == "h":  # hat: click
+        t = np.arange(int(0.03 * SR)) / SR
+        return np.diff(NOISE[: len(t) + 1]) * np.exp(-t * 150) * 0.25
+    raise ValueError(kind)
+
+
+class NoteBlocks(Song):
+    def __init__(self, bars):
+        super().__init__(NB_BPM, bars)
+
+    def hit(self, inst, m, beat, gain=1.0):
+        beat = round(beat * 4) / 4  # snap to the redstone tick
+        self.place(inst, nb_voice(inst, freq(nb_fold(m, inst))), beat, gain)
+
+    def line(self, inst, notes, gain=1.0, transpose=0, start=0.0, repeat_long=False):
+        """repeat_long: re-strike notes longer than a beat on every beat, since a note block can't hold."""
+        beat = start
+        for m, beats in notes:
+            if m is not None:
+                self.hit(inst, m + transpose, beat, gain)
+                if repeat_long:
+                    for k in range(1, int(beats)):
+                        self.hit(inst, m + transpose, beat + k, gain * 0.6)
+            beat += beats
+
+    def beat(self, pattern, bars, step=0.5, start_bar=0, gain=1.0):
+        for bar in range(bars):
+            for voice in pattern.split("+"):
+                for i, ch in enumerate(voice):
+                    if ch != ".":
+                        self.place("drums", nb_drum(ch), (start_bar + bar) * 4 + i * step, gain)
+
+    def mixdown(self, levels, loop=True):
+        return self.mix(levels, loop=loop, verb=0.06)
+
+
+def noteblock_capture(lead_spec, chords_spec, arp=(0, 1, 2, 1), bass_style="octave", lead_inst="pling"):
+    nb = NoteBlocks(16)
+    lead = parse(lead_spec)
+    chords = chord_list(chords_spec)
+    nb.line(lead_inst, lead, repeat_long=True)
+    nb.line("bell", lead, gain=0.35)
+    for bi, bar in enumerate(chords):
+        per = 4 / len(bar)
+        for ci, (root, q) in enumerate(bar):
+            tones = chord_tones(root + "4", q)
+            for k in range(int(per / 0.5)):
+                nb.hit("harp", tones[arp[k % len(arp)]], bi * 4 + ci * per + k * 0.5, 0.8)
+            r = midi(root + "2")
+            for k in range(int(per / 0.5)):
+                m = r + (12 if bass_style == "octave" and k % 2 else 0)
+                nb.hit("bass", m, bi * 4 + ci * per + k * 0.5, 1.0 if k % 2 == 0 else 0.75)
+    for bar in range(16):
+        if bar % 8 == 7:  # fill
+            nb.beat("k...s...+....s.s.ssss", 1, step=0.25, start_bar=bar)
+        else:
+            nb.beat("k..k..k.+..s...s.+hhhhhhhh", 1, start_bar=bar)
+    for bar in (0, 8):
+        nb.hit("chime", chord_tones(chords[bar][0][0] + "5", chords[bar][0][1])[0], bar * 4, 0.6)
+    return nb.mixdown({lead_inst: 0.6, "bell": 0.35, "harp": 0.3, "bass": 0.55, "drums": 0.5})
+
+
+def capture_nd():
+    """Note block 'Rapid Pursuit' (capture D)."""
+    return noteblock_capture(D_LEAD, D_CHORDS, arp=(0, 1, 2, 1), bass_style="drive")
+
+
+def capture_ne():
+    """Note block 'Styler Rush' (capture E): flute lead, bouncing bass."""
+    return noteblock_capture(E_LEAD, E_CHORDS, arp=(0, 2, 1, 2), bass_style="octave", lead_inst="flute")
+
+
+def capture_nf():
+    """Note block 'Ridge Runner' (capture F)."""
+    return noteblock_capture(F_LEAD, F_CHORDS, arp=(0, 1, 2, 0, 2, 1, 2, 0), bass_style="drive")
+
+
+def noteblock_victory(key):
+    bpm, lead, chords, final, final_chord, roll, run = VICTORY_SPECS[key]
+    nb = NoteBlocks(3)
+    start = 1
+    if roll or run:
+        if roll:
+            nb.beat("ssss", 1, step=0.25)
+        if run:
+            nb.line("xylo", parse(run), start=0)
+    notes = parse(lead)
+    nb.line("pling", notes, start=start)
+    nb.line("bell", notes, gain=0.5, start=start)
+    for beat, root, q, ln in chords:
+        for m in chord_tones(root + "4", q):
+            nb.hit("harp", m, start + beat, 0.7)
+        nb.hit("bass", midi(root + "2"), start + beat)
+    fm = midi(final)
+    tones = chord_tones(final_chord[0] + "4", final_chord[1])
+    for i, m in enumerate(tones + [tones[0] + 12]):  # rolled final chord
+        nb.hit("harp", m, start + 4 + i * 0.25, 0.8)
+    for k, g in enumerate((1.0, 0.7, 0.5)):  # a held note is re-struck, getting softer
+        nb.hit("pling", fm, start + 4 + k, g)
+        nb.hit("bell", fm, start + 4 + k, 0.5 * g)
+    nb.hit("chime", fm, start + 4, 0.8)
+    nb.hit("bass", midi(final_chord[0] + "2"), start + 4)
+    for beat in (0, 1, 2, 3):
+        nb.place("drums", nb_drum("k"), start + beat, 0.6)
+        nb.place("drums", nb_drum("s"), start + beat + 0.5, 0.5)
+    nb.place("drums", nb_drum("k"), start + 4, 0.9)
+    return nb.mixdown({"pling": 0.6, "bell": 0.35, "harp": 0.35, "bass": 0.5, "xylo": 0.4, "chime": 0.4,
+                       "drums": 0.5}, loop=False)
+
+CAPTURE = {"A": capture_a, "B": capture_b, "C": capture_c, "D": capture_d, "E": capture_e, "F": capture_f,
+           "ND": capture_nd, "NE": capture_ne, "NF": capture_nf}
+VICTORY = {"A": victory_a, "B": victory_b, "C": victory_c, "D": victory_d, "E": victory_e, "F": victory_f,
+           "ND": lambda: noteblock_victory("D"), "NE": lambda: noteblock_victory("E"),
+           "NF": lambda: noteblock_victory("F")}
 # The options Dylan picked; these are what the mod ships.
 CHOSEN_CAPTURE = "A"
 CHOSEN_VICTORY = "A"

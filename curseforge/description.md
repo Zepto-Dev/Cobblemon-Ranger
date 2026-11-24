@@ -4,7 +4,7 @@
 
 **Cobblemon Ranger** brings the Capture Styler from *Pokémon Ranger: Guardian Signs* to [Cobblemon](https://www.curseforge.com/minecraft/mc-mods/cobblemon). Instead of throwing a Poké Ball, right-click a wild Pokémon with your styler and draw loops around it until it trusts you. Your new friend fights by your side, helps you get past obstacles, and then heads back home.
 
-> Requires **Cobblemon** (1.6.1 or newer) and **Kotlin for Forge** on **NeoForge 1.21.1**. Install it on both the client and the server.
+> Requires **Cobblemon** (1.8.4 or newer) and **Kotlin for Forge** on **NeoForge 1.21.1**. Install it on both the client and the server.
 
 ---
 

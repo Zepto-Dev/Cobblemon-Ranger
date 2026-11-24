@@ -1,7 +1,11 @@
 package dev.zepto.cobblemonranger.capture;
 
 import com.cobblemon.mod.common.Cobblemon;
+import com.cobblemon.mod.common.api.Priority;
+import com.cobblemon.mod.common.api.battles.model.actor.BattleActor;
+import com.cobblemon.mod.common.api.events.CobblemonEvents;
 import com.cobblemon.mod.common.api.storage.party.PlayerPartyStore;
+import com.cobblemon.mod.common.battles.pokemon.BattlePokemon;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import dev.zepto.cobblemonranger.CobblemonRanger;
@@ -9,6 +13,7 @@ import dev.zepto.cobblemonranger.item.StylerItem;
 import dev.zepto.cobblemonranger.item.StylerProgress;
 import dev.zepto.cobblemonranger.mission.MissionManager;
 import dev.zepto.cobblemonranger.network.CaptureResultPayload;
+import dev.zepto.cobblemonranger.network.LoopPayload;
 import dev.zepto.cobblemonranger.network.OpenCapturePayload;
 import dev.zepto.cobblemonranger.network.UseAssistPayload;
 import dev.zepto.cobblemonranger.signs.SignManager;
@@ -25,6 +30,7 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
+import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
@@ -48,6 +54,11 @@ public final class CaptureManager {
     private static final String FROZEN_TAG = CobblemonRanger.MOD_ID + ":frozen";
     /** The minigame can't be won faster than this, which rejects forged results. */
     private static final int MIN_CAPTURE_TICKS = 40;
+    /**
+     * Loops closer together than this don't count. Even a quick spin around a small Pokémon takes longer, so it only
+     * stops a forged client from claiming loops faster than anyone could draw them.
+     */
+    private static final int MIN_LOOP_TICKS = 3;
     private static final int SESSION_TIMEOUT_TICKS = 20 * 60 * 5;
     private static final double MAX_DISTANCE_SQR = 24 * 24;
     /** The Partner Pokémon's own Poké Assist is this much stronger than a friend's. */
@@ -61,7 +72,7 @@ public final class CaptureManager {
     private static final Map<UUID, Session> SESSIONS = new HashMap<>();
 
     private record Session(UUID entityUuid, int entityId, InteractionHand hand, long startTick, ServerLevel level,
-                           boolean wasNoAi, Set<UUID> assistsUsed, AssistLog log) {
+                           boolean wasNoAi, Set<UUID> assistsUsed, AssistLog log, float gainPerLoop) {
     }
 
     /** What the assists in a capture did, to check the client's result against. */
@@ -70,6 +81,12 @@ public final class CaptureManager {
         final int partnerCharge;
         boolean partnerUsed;
         int electricUses;
+        /** Dragon and Poison assists fill the friendship gauge without loops. */
+        boolean gaugeAssistUsed;
+        int charmUses;
+        /** Loops around the Pokémon the client reported, at most one every {@link #MIN_LOOP_TICKS}. */
+        int loops;
+        long lastLoopTick = Long.MIN_VALUE;
 
         AssistLog(UUID partnerId, int partnerCharge) {
             this.partnerId = partnerId;
@@ -78,6 +95,41 @@ public final class CaptureManager {
     }
 
     private CaptureManager() {
+    }
+
+    /**
+     * While a Pokémon is held still for a capture, nobody else can throw a Poké Ball at it or battle it, so it can't
+     * be taken from the Ranger mid-capture.
+     */
+    public static void registerCobblemonEvents() {
+        CobblemonEvents.THROWN_POKEBALL_HIT.subscribe(Priority.HIGHEST, event -> {
+            if (isBeingCaptured(event.getPokemon().getUUID())) {
+                event.cancel();
+            }
+        });
+        CobblemonEvents.BATTLE_STARTED_PRE.subscribe(Priority.HIGHEST, event -> {
+            if (SESSIONS.isEmpty()) {
+                return;
+            }
+            for (BattleActor actor : event.getBattle().getActors()) {
+                for (BattlePokemon battlePokemon : actor.getPokemonList()) {
+                    PokemonEntity entity = battlePokemon.getEntity();
+                    if (entity != null && isBeingCaptured(entity.getUUID())) {
+                        event.cancel();
+                        return;
+                    }
+                }
+            }
+        });
+    }
+
+    /** Nothing hurts a Pokémon while it is being captured, so another player can't knock it out either. */
+    @SubscribeEvent
+    public static void onDamage(LivingIncomingDamageEvent event) {
+        if (!SESSIONS.isEmpty() && event.getEntity() instanceof PokemonEntity
+                && isBeingCaptured(event.getEntity().getUUID())) {
+            event.setCanceled(true);
+        }
     }
 
     public static boolean isCapturing(ServerPlayer player) {
@@ -151,7 +203,9 @@ public final class CaptureManager {
         Pokemon partner = PartnerManager.getPartner(player);
         int partnerCharge = partner == null ? 0 : PartnerManager.charge(player, partner);
         SESSIONS.put(player.getUUID(), new Session(entity.getUUID(), entity.getId(), hand, level.getGameTime(), level,
-                entity.isNoAi(), new HashSet<>(), new AssistLog(partner == null ? null : partner.getUuid(), partnerCharge)));
+                entity.isNoAi(), new HashSet<>(), new AssistLog(partner == null ? null : partner.getUuid(), partnerCharge),
+                CaptureMath.gainPerLoop(pokemon.getSpecies().getCatchRate(), pokemon.getLevel(),
+                        StylerItem.loopPower(styler))));
         // Through Mob: Cobblemon 1.7 dropped the PokemonNavigation override, so a direct call breaks the 1.6.1-built jar.
         ((Mob) entity).getNavigation().stop();
         entity.setNoAi(true);
@@ -217,7 +271,7 @@ public final class CaptureManager {
         Pokemon partner = PartnerManager.getPartner(player);
         if (partner != null && partner.getUuid().equals(payload.pokemonId())) {
             if (!partner.getUuid().equals(log.partnerId)
-                    || log.partnerCharge + Math.max(0, payload.loops()) < PartnerCharge.FULL) {
+                    || log.partnerCharge + log.loops < PartnerCharge.FULL) {
                 return;
             }
             session.assistsUsed().add(payload.pokemonId());
@@ -239,8 +293,26 @@ public final class CaptureManager {
     }
 
     private static void countAssist(AssistLog log, Pokemon helper) {
-        if ("electric".equals(helper.getPrimaryType().getName())) {
-            log.electricUses++;
+        switch (helper.getPrimaryType().getName()) {
+            case "electric" -> log.electricUses++;
+            case "dragon", "poison" -> log.gaugeAssistUsed = true;
+            case "fairy" -> log.charmUses++;
+            default -> {
+            }
+        }
+    }
+
+    /** Counts a loop the client drew around the Pokémon, ignoring any that come impossibly fast. */
+    public static void handleLoop(ServerPlayer player, LoopPayload payload) {
+        Session session = SESSIONS.get(player.getUUID());
+        if (session == null || session.entityId() != payload.entityId()) {
+            return;
+        }
+        AssistLog log = session.log();
+        long now = session.level().getGameTime();
+        if (now - log.lastLoopTick >= MIN_LOOP_TICKS) {
+            log.loops++;
+            log.lastLoopTick = now;
         }
     }
 
@@ -257,8 +329,7 @@ public final class CaptureManager {
         Pokemon partner = PartnerManager.getPartner(player);
         if (partner != null && partner.getUuid().equals(log.partnerId)) {
             // Nobody draws more than about two loops a second, which caps what a forged result could claim.
-            long seconds = (session.level().getGameTime() - session.startTick()) / 20 + 1;
-            int loops = (int) Math.min(Math.max(0, result.chargeLoops()), seconds * 2);
+            int loops = Math.min(Math.max(0, result.chargeLoops()), log.loops);
             PartnerManager.setCharge(player, partner, (log.partnerUsed ? 0 : log.partnerCharge) + loops);
         }
 
@@ -281,7 +352,15 @@ public final class CaptureManager {
                     Component.translatable("message.cobblemonranger.capture_cancelled"), true);
             case CAPTURED -> {
                 long elapsed = session.level().getGameTime() - session.startTick();
-                if (target instanceof PokemonEntity entity && elapsed >= MIN_CAPTURE_TICKS
+                int minLoops = CaptureMath.minLoops(session.gainPerLoop(), log.gaugeAssistUsed, log.charmUses);
+                if (log.loops < minLoops) {
+                    CobblemonRanger.LOGGER.warn("Rejected a capture by {}: {} loops reported, at least {} needed",
+                            player.getGameProfile().getName(), log.loops, minLoops);
+                    if (target != null) {
+                        player.displayClientMessage(Component.translatable(
+                                "message.cobblemonranger.capture_escaped", target.getName()), false);
+                    }
+                } else if (target instanceof PokemonEntity entity && elapsed >= MIN_CAPTURE_TICKS
                         && StylerItem.getEnergy(styler) > 0) {
                     capture(player, entity, styler);
                 }

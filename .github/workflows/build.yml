@@ -11,8 +11,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Oldest supported Cobblemon for 1.21.1 plus the newer releases, so API drift is caught.
-        cobblemon: ['1.6.1+1.21.1', '1.7.3+1.21.1', '1.8.3+1.21.1']
+        # The Cobblemon the mod is built against. Add newer releases here as they come out, so API drift is caught.
+        cobblemon: ['1.8.4+1.21.1']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -57,7 +57,7 @@ jobs:
       - name: Check against newer Cobblemon releases
         run: |
           # The first jar is the one the mod is compiled against (gradle.properties), used as the baseline.
-          for v in 1.6.1 1.7.3 1.8.1 1.8.3; do
+          for v in 1.8.4; do
             curl -sSfL -o cobblemon-$v.jar "https://maven.impactdev.net/repository/development/com/cobblemon/neoforge/$v%2B1.21.1/neoforge-$v%2B1.21.1.jar"
           done
-          python3 tools/check_cobblemon_compat.py build/libs/cobblemonranger-*.jar cobblemon-1.6.1.jar cobblemon-1.7.3.jar cobblemon-1.8.1.jar cobblemon-1.8.3.jar
+          python3 tools/check_cobblemon_compat.py build/libs/cobblemonranger-*.jar cobblemon-1.8.4.jar

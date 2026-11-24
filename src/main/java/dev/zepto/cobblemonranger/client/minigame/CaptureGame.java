@@ -1,5 +1,7 @@
 package dev.zepto.cobblemonranger.client.minigame;
 
+import dev.zepto.cobblemonranger.capture.CaptureMath;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -37,7 +39,7 @@ public final class CaptureGame {
     private static final float BUBBLE_SPEED = 150f;
     /** How far the cursor moves from where the bubble started to launch it. */
     private static final float BUBBLE_FLICK = 10f;
-    private static final float ASSIST_GAUGE_CAP = 0.95f;
+    private static final float ASSIST_GAUGE_CAP = CaptureMath.ASSIST_GAUGE_CAP;
     private static final float WALL_THICKNESS = 4f;
     /** Ice enclosure test grid, in arena units per cell. */
     private static final int ICE_CELL = 4;
@@ -309,7 +311,7 @@ public final class CaptureGame {
         float levelFactor = clamp(level, 1, 100) / 100f;
         this.difficulty = clamp((1 - catchFactor) * 0.7f + levelFactor * 0.3f, 0, 1);
         this.speed = 22f + 38f * difficulty;
-        this.gainPerLoop = clamp(0.16f * (0.45f + catchFactor) * (1.25f - levelFactor * 0.6f) * loopPower, 0.035f, 0.34f);
+        this.gainPerLoop = CaptureMath.gainPerLoop(catchRate, level, loopPower);
         this.radius = clamp(9f + sizeHint * 5f, 10f, 24f);
         this.signatureAttack = attackFor(type);
         this.wanderAngle = random.nextFloat() * (float) (Math.PI * 2);

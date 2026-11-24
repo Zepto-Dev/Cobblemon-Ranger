@@ -40,6 +40,7 @@
   "message.cobblemonranger.too_high_level": "%s (Lv. %s) is too strong for your styler. A Lv. %s styler can capture Pok\u00e9mon up to Lv. %s; level it up with captures and missions.",
   "message.cobblemonranger.in_battle": "That Pok\u00e9mon is in a battle.",
   "message.cobblemonranger.busy": "A capture is already in progress.",
+  "message.cobblemonranger.released_from_pc": "%s was a friend Pok\u00e9mon, so it went home instead of staying in the PC.",
   "message.cobblemonranger.no_energy": "Your styler is out of energy. It recharges over time, or repair it with redstone at an anvil.",
   "message.cobblemonranger.party_full": "Your party is full, so there's no room for a friend Pok\u00e9mon.",
   "message.cobblemonranger.capture_failed_energy": "Your styler ran out of energy and the Pok\u00e9mon got away!",

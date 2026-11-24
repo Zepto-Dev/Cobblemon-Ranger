@@ -24,6 +24,7 @@ import dev.zepto.cobblemonranger.registry.ModVillagers;
 import dev.zepto.cobblemonranger.signs.SignManager;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
@@ -51,6 +52,10 @@ public final class CobblemonRanger {
         ModRecipes.SERIALIZERS.register(modBus);
         ModCreativeTabs.TABS.register(modBus);
         modBus.addListener(ModNetwork::register);
+        modBus.addListener((FMLCommonSetupEvent event) -> event.enqueueWork(() -> {
+            CaptureManager.registerCobblemonEvents();
+            FriendManager.registerCobblemonEvents();
+        }));
 
         NeoForge.EVENT_BUS.register(CaptureManager.class);
         NeoForge.EVENT_BUS.register(FriendManager.class);

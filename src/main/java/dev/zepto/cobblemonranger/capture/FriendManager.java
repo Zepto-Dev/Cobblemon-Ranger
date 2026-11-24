@@ -1,7 +1,10 @@
 package dev.zepto.cobblemonranger.capture;
 
 import com.cobblemon.mod.common.Cobblemon;
+import com.cobblemon.mod.common.api.Priority;
+import com.cobblemon.mod.common.api.events.CobblemonEvents;
 import com.cobblemon.mod.common.api.storage.party.PlayerPartyStore;
+import com.cobblemon.mod.common.api.storage.pc.PCStore;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.cobblemon.mod.common.util.PlayerExtensionsKt;
@@ -37,6 +40,8 @@ public final class FriendManager {
      * the client fail to apply Cobblemon's recall update, because the Pokémon has already left its party.
      */
     private static final int RECALL_TICKS = 10;
+    /** Ticks between checks of a player's PC for friends that were moved out of the party. */
+    private static final int PC_CHECK_TICKS = 100;
 
     /** Sent-out friends that have been recalled and leave the party once their recall has synced. */
     private static final List<PendingRelease> RECALLING = new ArrayList<>();
@@ -140,6 +145,40 @@ public final class FriendManager {
         return true;
     }
 
+    /** Friends can't be traded away: they only joined the party to help, and would never be released. */
+    public static void registerCobblemonEvents() {
+        CobblemonEvents.TRADE_EVENT_PRE.subscribe(Priority.HIGHEST, event -> {
+            if (isFriend(event.getTradeParticipant1Pokemon()) || isFriend(event.getTradeParticipant2Pokemon())) {
+                event.cancel();
+            }
+        });
+    }
+
+    /**
+     * Sends home any friend found in the player's PC (including one put in a pasture from there). Friends are only
+     * looked for in the party, so one moved to the PC would otherwise never be released.
+     */
+    private static void releaseFriendsInPc(ServerPlayer player) {
+        PCStore pc = Cobblemon.INSTANCE.getStorage().getPC(player);
+        List<Pokemon> found = new ArrayList<>();
+        for (Pokemon pokemon : pc) {
+            if (pokemon != null && isFriend(pokemon)) {
+                found.add(pokemon);
+            }
+        }
+        for (Pokemon pokemon : found) {
+            PokemonEntity pastured = pokemon.getEntity();
+            if (pastured != null) {
+                pastured.discard();
+            }
+            if (pc.remove(pokemon)) {
+                clearFriend(pokemon);
+                player.displayClientMessage(Component.translatable("message.cobblemonranger.released_from_pc",
+                        pokemon.getSpecies().getTranslatedName()), false);
+            }
+        }
+    }
+
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
         Iterator<PendingRelease> it = RECALLING.iterator();
@@ -161,6 +200,9 @@ public final class FriendManager {
     public static void onPlayerTick(PlayerTickEvent.Post event) {
         if (!(event.getEntity() instanceof ServerPlayer player) || player.tickCount % 10 != 0) {
             return;
+        }
+        if (player.tickCount % PC_CHECK_TICKS == 0) {
+            releaseFriendsInPc(player);
         }
         List<Pokemon> friends = getFriends(player);
         if (friends.isEmpty()) {

@@ -64,6 +64,8 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
     private float facing = 180f;
     private float shake;
     private boolean resultSent;
+    /** init() runs again on every window resize; the music starts only the first time. */
+    private boolean musicStarted;
     private final boolean[] assistUsed;
     private Component assistBanner = Component.empty();
     private float assistBannerTime;
@@ -110,6 +112,10 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
         arenaX = (width - CaptureGame.WIDTH * scale) / 2;
         arenaY = MARGIN + BEZEL_TOP + (availableHeight - CaptureGame.HEIGHT * scale) / 2;
         playSound(SoundEvents.BEACON_ACTIVATE, 1.8f);
+        if (!musicStarted) {
+            musicStarted = true;
+            CaptureMusic.start();
+        }
     }
 
     /** Places the ground decorations; seeded by the spot so the same place always looks the same. */
@@ -187,6 +193,7 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
     @Override
     public void removed() {
         sendResult(CaptureResultPayload.Outcome.GAVE_UP);
+        CaptureMusic.stop(1f);
         super.removed();
     }
 
@@ -882,12 +889,15 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
 
     @Override
     public void onCaptured() {
-        playSound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, 1.2f);
+        if (!CaptureMusic.victory()) {
+            playSound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, 1.2f);
+        }
     }
 
     @Override
     public void onFailed() {
         playSound(SoundEvents.ITEM_BREAK, 0.8f);
+        CaptureMusic.stop(1.2f);
     }
 
     @Override

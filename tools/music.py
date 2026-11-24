@@ -866,8 +866,8 @@ VICTORY = {"A": victory_a, "B": victory_b, "C": victory_c, "D": victory_d, "E": 
            "ND": lambda: noteblock_victory("D"), "NE": lambda: noteblock_victory("E"),
            "NF": lambda: noteblock_victory("F")}
 # The options Dylan picked; these are what the mod ships.
-CHOSEN_CAPTURE = "A"
-CHOSEN_VICTORY = "A"
+CHOSEN_CAPTURE = "ND"
+CHOSEN_VICTORY = "ND"
 
 
 # ---------------------------------------------------------------- output

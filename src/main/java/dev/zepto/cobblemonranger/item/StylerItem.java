@@ -4,6 +4,7 @@ import dev.zepto.cobblemonranger.capture.CaptureManager;
 import dev.zepto.cobblemonranger.capture.FriendManager;
 import dev.zepto.cobblemonranger.field.FieldMove;
 import dev.zepto.cobblemonranger.field.FieldMoveManager;
+import dev.zepto.cobblemonranger.config.RangerConfig;
 import dev.zepto.cobblemonranger.registry.ModDataComponents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
@@ -36,9 +37,6 @@ import java.util.List;
  * slowly while carried, and it never breaks (an empty styler just can't start a capture).
  */
 public class StylerItem extends Item {
-    /** Ticks between passive recharge steps while the styler is in an inventory. */
-    private static final int RECHARGE_INTERVAL = 100;
-
     private final DyeColor color;
 
     public StylerItem(DyeColor color, Properties properties) {
@@ -159,7 +157,7 @@ public class StylerItem extends Item {
 
     @Override
     public void inventoryTick(ItemStack stack, Level level, Entity entity, int slot, boolean selected) {
-        if (level.isClientSide() || !stack.isDamaged() || level.getGameTime() % RECHARGE_INTERVAL != 0) {
+        if (level.isClientSide() || !stack.isDamaged() || level.getGameTime() % RangerConfig.stylerRechargeTicks() != 0) {
             return;
         }
         if (entity instanceof ServerPlayer player && CaptureManager.isCapturing(player)) {

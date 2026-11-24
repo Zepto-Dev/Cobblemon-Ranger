@@ -12,6 +12,7 @@ public final class RangerConfig {
     public static final ModConfigSpec.IntValue CAPTURE_LEVEL_CAP_PER_LEVEL;
     public static final ModConfigSpec.IntValue PARTNER_FIELD_MOVE_COOLDOWN_SECONDS;
     public static final ModConfigSpec.IntValue HQ_CHARGE_COOLDOWN_MINUTES;
+    public static final ModConfigSpec.IntValue STYLER_RECHARGE_SECONDS;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -43,6 +44,10 @@ public final class RangerConfig {
         HQ_CHARGE_COOLDOWN_MINUTES = builder
                 .comment("Real-time minutes a player waits between styler recharges at a Ranger HQ Terminal.")
                 .defineInRange("hqChargeCooldownMinutes", 10, 0, 360);
+        STYLER_RECHARGE_SECONDS = builder
+                .comment("Seconds for a carried styler to recharge 1 energy on its own. 8 seconds refills a fresh",
+                        "30-energy styler in 4 minutes.")
+                .defineInRange("stylerRechargeSeconds", 8, 1, 600);
         SPEC = builder.build();
     }
 
@@ -59,6 +64,10 @@ public final class RangerConfig {
 
     public static long worldSignSharedCooldownTicks() {
         return valueOr(WORLD_SIGN_SHARED_COOLDOWN_MINUTES, 20) * 20L * 60L;
+    }
+
+    public static int stylerRechargeTicks() {
+        return valueOr(STYLER_RECHARGE_SECONDS, 8) * 20;
     }
 
     /** Server config isn't loaded on a client outside a world, where only the default matters. */

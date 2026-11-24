@@ -12,7 +12,7 @@ public final class ModNetwork {
     }
 
     public static void register(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar("2");
+        PayloadRegistrar registrar = event.registrar("3");
         // Client handlers are only referenced inside lambda bodies, so dedicated servers never load client classes.
         registrar.playToClient(OpenCapturePayload.TYPE, OpenCapturePayload.STREAM_CODEC,
                 (payload, context) -> ClientPayloads.openCapture(payload));
@@ -20,6 +20,8 @@ public final class ModNetwork {
                 (payload, context) -> ClientPayloads.rangerSync(payload));
         registrar.playToServer(CaptureResultPayload.TYPE, CaptureResultPayload.STREAM_CODEC,
                 (payload, context) -> CaptureManager.handleResult((ServerPlayer) context.player(), payload));
+        registrar.playToServer(LoopPayload.TYPE, LoopPayload.STREAM_CODEC,
+                (payload, context) -> CaptureManager.handleLoop((ServerPlayer) context.player(), payload));
         registrar.playToServer(UseAssistPayload.TYPE, UseAssistPayload.STREAM_CODEC,
                 (payload, context) -> CaptureManager.handleAssist((ServerPlayer) context.player(), payload));
         registrar.playToServer(UseSignPayload.TYPE, UseSignPayload.STREAM_CODEC,

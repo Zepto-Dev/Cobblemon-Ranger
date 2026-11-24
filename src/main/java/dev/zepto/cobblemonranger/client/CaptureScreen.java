@@ -2,6 +2,7 @@ package dev.zepto.cobblemonranger.client;
 
 import dev.zepto.cobblemonranger.client.minigame.CaptureGame;
 import dev.zepto.cobblemonranger.network.CaptureResultPayload;
+import dev.zepto.cobblemonranger.network.LoopPayload;
 import dev.zepto.cobblemonranger.network.OpenCapturePayload;
 import dev.zepto.cobblemonranger.item.StylerItem;
 import net.minecraft.ChatFormatting;
@@ -865,6 +866,7 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
     @Override
     public void onLoop(boolean enclosed, int loops) {
         if (enclosed) {
+            PacketDistributor.sendToServer(new LoopPayload(payload.entityId()));
             chargeLoops++;
             if (partnerCharge < payload.partnerChargeFull()) {
                 partnerCharge++;

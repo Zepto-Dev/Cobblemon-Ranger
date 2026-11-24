@@ -31,8 +31,13 @@ public record StylerProgress(int level, int xp) {
         return stack.getOrDefault(ModDataComponents.STYLER_PROGRESS.get(), DEFAULT);
     }
 
+    /**
+     * XP needed to go from {@code level} to the next one. Grows with the square of the level: about the same as before
+     * for the first few levels (70 at Lv. 1, 250 at Lv. 5), then much steeper (700 at Lv. 10, 2140 at Lv. 19).
+     * Lv. 20 takes about 16,000 XP in total.
+     */
     public static int xpToNext(int level) {
-        return 40 + 20 * level;
+        return 50 + 15 * level + 5 * level * level;
     }
 
     public boolean isMaxed() {

@@ -280,5 +280,6 @@
   "cobblemonranger.configuration.captureLevelCapBase": "Capture level cap at styler Lv. 1",
   "cobblemonranger.configuration.captureLevelCapPerLevel": "Capture level cap per styler level",
   "cobblemonranger.configuration.partnerFieldMoveCooldownSeconds": "Partner field move cooldown (seconds)",
-  "cobblemonranger.configuration.hqChargeCooldownMinutes": "HQ Terminal recharge cooldown (minutes)"
+  "cobblemonranger.configuration.hqChargeCooldownMinutes": "HQ Terminal recharge cooldown (minutes)",
+  "cobblemonranger.configuration.stylerRechargeSeconds": "Styler recharge time per energy (seconds)"
 }

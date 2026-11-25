@@ -194,6 +194,8 @@ public final class CaptureGame {
         public final float radius;
         /** Turn rate towards the line, in radians a second; 0 flies straight. */
         float homing;
+        /** The signature attack that fired it, for its art; null for the type's usual projectile. */
+        public AttackStyle style;
 
         Projectile(float x, float y, float vx, float vy, float radius) {
             this.x = x;
@@ -221,12 +223,22 @@ public final class CaptureGame {
         public final float x, y, radius;
         /** Counts down while the warning marker is shown, then goes negative while it explodes. */
         public float timer;
+        /** How long the warning lasts in all. */
+        public final float warning;
+        /** The signature attack that placed it, for its art; null for the type's usual blast. */
+        public AttackStyle style;
 
         Hazard(float x, float y, float radius, float warning) {
             this.x = x;
             this.y = y;
             this.radius = radius;
             this.timer = warning;
+            this.warning = warning;
+        }
+
+        Hazard(float x, float y, float radius, float warning, AttackStyle style) {
+            this(x, y, radius, warning);
+            this.style = style;
         }
 
         public boolean exploding() {
@@ -653,6 +665,11 @@ public final class CaptureGame {
 
     public boolean isDashing() {
         return dashTimer > 0 || orbitTimer > 0;
+    }
+
+    /** Latios and Latias's high-speed laps round the arena. */
+    public boolean isOrbiting() {
+        return orbitTimer > 0;
     }
 
     public boolean isInvulnerable() {
@@ -1835,6 +1852,7 @@ public final class CaptureGame {
                     Projectile p = new Projectile(x, y, (float) Math.cos(angle) * 75f, (float) Math.sin(angle) * 75f, 4.5f);
                     p.homing = blind ? 0 : 1.6f + difficulty;
                     p.life = 3.5f;
+                    p.style = AttackStyle.MIST_BALLS;
                     projectiles.add(p);
                 }
             }
@@ -1876,7 +1894,8 @@ public final class CaptureGame {
                 for (int i = 0; i < count; i++) {
                     pending.add(new Pending(i * 0.32f, () -> {
                         float[] at = blindTimer > 0 || line.isEmpty() ? randomPoint() : line.get(line.size() - 1);
-                        hazards.add(new Hazard(clamp(at[0], 0, WIDTH), clamp(at[1], 0, HEIGHT), 14f, 0.55f));
+                        hazards.add(new Hazard(clamp(at[0], 0, WIDTH), clamp(at[1], 0, HEIGHT), 14f, 0.55f,
+                                AttackStyle.PILLARS));
                     }));
                 }
             }
@@ -1925,7 +1944,7 @@ public final class CaptureGame {
                                 at = randomPoint();
                             }
                             hazards.add(new Hazard(clamp(at[0], 0, WIDTH), clamp(at[1], 0, HEIGHT), 11f,
-                                    0.6f + random.nextFloat() * 0.2f));
+                                    0.6f + random.nextFloat() * 0.2f, AttackStyle.RAIN));
                         }
                     }));
                 }

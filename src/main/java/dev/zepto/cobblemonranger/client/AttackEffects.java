@@ -57,6 +57,7 @@ final class AttackEffects {
 
     void tick(float dt) {
         time += dt;
+        tickSignatures(dt);
         if (game.isDashing()) {
             dashEmit += dt * 40;
             for (; dashEmit >= 1; dashEmit--) {
@@ -150,7 +151,11 @@ final class AttackEffects {
             }
             float hx = ox + hazard.x * scale, hy = oy + hazard.y * scale;
             float size = hazard.radius * 2 * scale * 32 / 28f;
-            if (art.blast() == AttackArt.Blast.ROCKFALL) {
+            if (hazard.style != null) {
+                // Entei's pillars warn with the fire marker; the birds' storm with a shadow ring.
+                float pulse = 0.75f + 0.25f * (float) Math.sin(hazard.timer * 20);
+                AttackArt.blast(graphics, signatureBlast(hazard, true), (int) (time * 8) % 2, hx, hy, size, 0xFFFFFF, pulse);
+            } else if (art.blast() == AttackArt.Blast.ROCKFALL) {
                 AttackArt.blast(graphics, art.blast(), hazard.timer < 0.45f ? 1 : 0, hx, hy, size, 0xFFFFFF, 1);
                 // The boulder drops in from above the arena and lands as the timer runs out.
                 float drop = hazard.timer * 140 * scale;
@@ -195,8 +200,27 @@ final class AttackEffects {
                 continue;
             }
             int frame = 2 + Math.min(3, (int) (-hazard.timer / 0.3f * 4));
-            AttackArt.blast(graphics, art.blast(), frame, ox + hazard.x * scale, oy + hazard.y * scale,
-                    hazard.radius * 2.4f * scale * 32 / 30f, blastTint(), 1);
+            AttackArt.Blast blast = hazard.style != null ? signatureBlast(hazard, false) : art.blast();
+            AttackArt.blast(graphics, blast, frame, ox + hazard.x * scale, oy + hazard.y * scale,
+                    hazard.radius * 2.4f * scale * 32 / 30f, hazard.style != null ? 0xFFFFFF : blastTint(), 1);
+            if (hazard.style == CaptureGame.AttackStyle.PILLARS) {
+                // A tongue of flame shooting up out of each burst.
+                AttackArt.sprite(graphics, AttackArt.Element.FIRE, (int) (time * 12) % 4, ox + hazard.x * scale,
+                        oy + (hazard.y - hazard.radius * 1.1f) * scale, hazard.radius * 1.5f * scale,
+                        (float) -Math.PI / 2, 0xFFFFFF, 1);
+            }
+        }
+        for (CaptureGame.Hazard hazard : game.hazards) {
+            if (hazard.style != CaptureGame.AttackStyle.RAIN || hazard.exploding()) {
+                continue;
+            }
+            // The birds' storm falling onto its markers: Articuno's icicles, Moltres's fireballs.
+            AttackArt.Element drop = rainKind();
+            if (drop != AttackArt.Element.ELECTRIC) {
+                AttackArt.sprite(graphics, drop, drop.oriented ? 0 : (int) (time * 12) % 4, ox + hazard.x * scale,
+                        oy + (hazard.y - fallHeight(hazard)) * scale, 18 * scale, drop.oriented ? (float) Math.PI / 2 : 0,
+                        0xFFFFFF, 1);
+            }
         }
         for (CaptureGame.Shockwave wave : game.shockwaves) {
             // A ring of the type's particles riding the wave's edge.
@@ -213,6 +237,11 @@ final class AttackEffects {
             }
         }
         for (CaptureGame.Projectile p : game.projectiles) {
+            if (p.style == CaptureGame.AttackStyle.MIST_BALLS) {
+                AttackArt.signature(graphics, AttackArt.SIGNATURE_MIST_BALL, ox + p.x * scale, oy + p.y * scale,
+                        p.radius * 3.6f * scale, 0, 0xFFFFFF, 1);
+                continue;
+            }
             AttackArt.Element missile = art.missile();
             int frame = (int) (time * 12 + System.identityHashCode(p)) % 4;
             float angle = missile.oriented ? (float) Math.atan2(p.vy, p.vx) : 0;
@@ -230,9 +259,65 @@ final class AttackEffects {
 
     // ------------------------------------------------------------------ legendary signature attacks
 
-    private static final int LAVA = 0xFF7A1A, LAVA_HOT = 0xFFE066, AURORA = 0x7FF0FF, AURORA_PINK = 0xE0A8FF;
-    private static final int THUNDER = 0xFFE040, WATER = 0x3A7FE0, FOAM = 0xE8F6FF, CRESCENT = 0xF2A8FF;
-    private static final int PSYCHIC = 0xB070FF;
+    private static final int OUTLINE = 0x1A1C2C;
+    // Five-shade palettes from tools/attack_textures.py, outline to highlight.
+    private static final int[] LAVA = {0x3A0A06, 0xA0200C, 0xE85A10, 0xFFA020, 0xFFE070};
+    private static final int[] ELECTRIC = {0x6A4A0A, 0xD89A12, 0xFFD23F, 0xFFF08A, 0xFFFFFF};
+    private static final int[] PSYCHIC = {0x6A1440, 0xC0306E, 0xF0609A, 0xFFA8CA, 0xFFF0F6};
+    private static final int[] GRASS = {0x1C4418, 0x3C9A30, 0x6CD04A, 0xB8F080, 0xF0FFD0};
+    private static final int[] FLYING = {0x3A3A7A, 0x7A84D0, 0xB4BEF4, 0xE2E8FF, 0xFFFFFF};
+    private static final int[] DRAGON = {0x1E0E5A, 0x4A26B0, 0x7A5AF0, 0xB09AFF, 0x7AF5E6};
+    private static final int[] WATER_PAL = {0x1A3A7A, 0x2E6AD0, 0x4FA0F0, 0x9AD4FF, 0xFFFFFF};
+    private static final int CRACK = 0x2A1408, CRACK_INNER = 0x4A2A14;
+    private static final int AURORA = 0x7FF0FF, AURORA_PINK = 0xE0A8FF, AURORA_MINT = 0x9AF8D8;
+    private static final int FOAM = 0xE8F6FF, CRESCENT = 0xF2A8FF, AFTERIMAGE = 0xB09AFF;
+
+    /** Each fissure's crack, as points in arena units, so the crack and its lava follow the same zigzag. */
+    private final java.util.Map<CaptureGame.Lane, float[]> cracks = new IdentityHashMap<>();
+    /** Where the Pokémon has been during Latios and Latias's laps, newest first, for the afterimage rings. */
+    private final float[] trail = new float[2 * TRAIL];
+    private static final int TRAIL = 9;
+    private int trailCount;
+    private float trailEmit;
+
+    private void tickSignatures(float dt) {
+        cracks.keySet().removeIf(lane -> !game.lanes.contains(lane));
+        if (game.isOrbiting()) {
+            trailEmit += dt;
+            if (trailEmit >= 0.035f) {
+                trailEmit = 0;
+                System.arraycopy(trail, 0, trail, 2, trail.length - 2);
+                trail[0] = game.x;
+                trail[1] = game.y;
+                trailCount = Math.min(TRAIL, trailCount + 1);
+            }
+        } else if (trailCount > 0) {
+            trailEmit += dt;
+            if (trailEmit >= 0.035f) {
+                trailEmit = 0;
+                trailCount--;
+            }
+        }
+    }
+
+    private float[] crack(CaptureGame.Lane lane) {
+        return cracks.computeIfAbsent(lane, l -> {
+            float length = (float) Math.hypot(l.bx - l.ax, l.by - l.ay);
+            int steps = Math.max(2, (int) (length / 6));
+            float nx = -(l.by - l.ay) / length, ny = (l.bx - l.ax) / length;
+            Random jitter = new Random(System.identityHashCode(l));
+            float[] points = new float[2 * (steps + 1)];
+            float offset = 0;
+            for (int i = 0; i <= steps; i++) {
+                float t = i / (float) steps;
+                // A wandering offset with small kinks, like a crack in dry ground.
+                offset = i == 0 || i == steps ? 0 : Math.max(-6, Math.min(6, offset + (jitter.nextFloat() - 0.5f) * 6));
+                points[2 * i] = l.ax + (l.bx - l.ax) * t + nx * offset;
+                points[2 * i + 1] = l.ay + (l.by - l.ay) * t + ny * offset;
+            }
+            return points;
+        });
+    }
 
     /** Where the signature attacks will strike: cracks, dashed lanes, the coming wave. */
     private void drawSignatureWarnings(GuiGraphics graphics, float ox, float oy, float scale) {
@@ -242,21 +327,21 @@ final class AttackEffects {
             float ax = ox + lane.ax * scale, ay = oy + lane.ay * scale, bx = ox + lane.bx * scale, by = oy + lane.by * scale;
             switch (lane.kind) {
                 case FISSURE -> {
-                    // A jagged crack in the ground, glowing once it erupts.
-                    int crack = lane.live() ? 0xE0301008 : alpha(0xC0, blink) << 24 | 0x301008;
-                    jagged(shapes, ax, ay, bx, by, 3f * scale, (lane.width * 0.5f) * scale, System.identityHashCode(lane),
-                            crack);
+                    // A dark jagged crack in the ground, which the lava runs along once it erupts.
+                    float fade = lane.live() ? 1 : blink;
+                    float[] crack = crack(lane);
+                    polyline(shapes, crack, 0, 1, 5 * scale, (alpha(0xF0, fade) << 24) | CRACK, ox, oy, scale);
+                    polyline(shapes, crack, 0, 1, 3 * scale, (alpha(0xF0, fade) << 24) | CRACK_INNER, ox, oy, scale);
                 }
                 case DIVE, AURORA -> {
                     if (!lane.live()) {
-                        int color = lane.kind == CaptureGame.LaneKind.AURORA ? AURORA : streakColor();
+                        int color = lane.kind == CaptureGame.LaneKind.AURORA ? AURORA : DRAGON[3];
                         dashed(shapes, ax, ay, bx, by, 1.5f * scale, 8 * scale, (alpha(0xC0, blink) << 24) | color);
                     }
                 }
                 case CHAIN -> {
                     if (!lane.live()) {
-                        dashed(shapes, ax, ay, bx, by, 1f * scale, 5 * scale, (alpha(0x90, blink) << 24) | THUNDER);
-                        shapes.disc(ax, ay, 4 * scale, (alpha(0xFF, blink) << 24) | THUNDER);
+                        dashed(shapes, ax, ay, bx, by, 1f * scale, 5 * scale, (alpha(0x90, blink) << 24) | ELECTRIC[3]);
                     }
                 }
             }
@@ -290,6 +375,16 @@ final class AttackEffects {
             }
         }
         graphics.flush();
+
+        // Raikou's three Electric orbs mark the corners from the start.
+        AttackArt.begin();
+        for (CaptureGame.Lane lane : game.lanes) {
+            if (lane.kind == CaptureGame.LaneKind.CHAIN) {
+                int frame = (int) (time * 8) % 4;
+                AttackArt.sprite(graphics, AttackArt.Element.ELECTRIC, frame, ox + lane.ax * scale, oy + lane.ay * scale,
+                        16 * scale, 0, 0xFFFFFF, lane.live() ? 1 : 0.6f + 0.4f * blink);
+            }
+        }
     }
 
     private void drawSignatures(GuiGraphics graphics, float ox, float oy, float scale) {
@@ -305,37 +400,60 @@ final class AttackEffects {
             float bx = ox + (lane.ax + dx * t1) * scale, by = oy + (lane.ay + dy * t1) * scale;
             switch (lane.kind) {
                 case FISSURE -> {
-                    shapes.line(ax, ay, bx, by, lane.width * scale, 0xC0000000 | LAVA);
-                    shapes.line(ax, ay, bx, by, lane.width * 0.45f * scale, 0xFF000000 | LAVA_HOT);
-                    // Lava spurting at the front of the eruption.
-                    if (random.nextFloat() < 0.6f && t1 < 1) {
-                        emit(art.debris(), 0xFFFFFF, lane.ax + dx * t1, lane.ay + dy * t1, spread(40), -30 + spread(25),
+                    // Lava glowing up through the crack: shadow, light and a white-hot core.
+                    float[] crack = crack(lane);
+                    polyline(shapes, crack, t0, t1, lane.width * 0.6f * scale, 0xFF000000 | LAVA[1], ox, oy, scale);
+                    polyline(shapes, crack, t0, t1, lane.width * 0.36f * scale, 0xFF000000 | LAVA[3], ox, oy, scale);
+                    polyline(shapes, crack, t0, t1, lane.width * 0.12f * scale, 0xFF000000 | LAVA[4], ox, oy, scale);
+                    if (random.nextFloat() < 0.5f && t1 < 1) {
+                        float[] front = along(crack, t1);
+                        emit(AttackArt.Element.LAVA, 0xFFFFFF, front[0], front[1], spread(30), -30 + spread(20),
                                 0.45f, 14, 2);
                     }
                 }
                 case DIVE -> {
-                    // A streak that fades towards its tail, brightest at the diving head.
-                    for (int k = 0; k < 4; k++) {
-                        float s0 = k / 4f, s1 = (k + 1) / 4f;
-                        float x0 = ax + (bx - ax) * s0, y0 = ay + (by - ay) * s0;
-                        float x1 = ax + (bx - ax) * s1, y1 = ay + (by - ay) * s1;
-                        int a = 0x40 + 0x30 * k;
-                        shapes.line(x0, y0, x1, y1, lane.width * (0.6f + 0.15f * k) * scale, a << 24 | (art.color() & 0xFFFFFF));
-                        shapes.line(x0, y0, x1, y1, lane.width * 0.3f * scale, (a + 0x30) << 24 | 0xFFFFFF);
+                    // Rayquaza: a purple-and-teal slash left behind the diving Dragon flame, fading as it goes.
+                    float fade = Math.max(0.3f, 1 - t0);
+                    shapes.line(ax, ay, bx, by, lane.width * 0.55f * scale, (alpha(0xA0, fade) << 24) | DRAGON[0]);
+                    shapes.line(ax, ay, bx, by, lane.width * 0.35f * scale, (alpha(0xC8, fade) << 24) | DRAGON[2]);
+                    float length = (float) Math.hypot(bx - ax, by - ay);
+                    if (length > 1) {
+                        float core = Math.min(length, 50 * scale) / length;
+                        shapes.line(bx + (ax - bx) * core, by + (ay - by) * core, bx, by, 1.5f * scale, 0xFF000000 | DRAGON[4]);
                     }
-                    shapes.disc(bx, by, lane.width * 0.7f * scale, 0xF0FFFFFF);
                 }
                 case AURORA -> {
+                    // Three wavy ribbons of light hanging across the arena, rippling.
                     float fade = Math.min(1, (lane.travel + lane.active + lane.timer) / 0.4f);
-                    shapes.line(ax, ay, bx, by, lane.width * 1.6f * scale, (alpha(0x50, fade * shimmer) << 24) | AURORA_PINK);
-                    shapes.line(ax, ay, bx, by, lane.width * scale, (alpha(0xB0, fade * shimmer) << 24) | AURORA);
-                    shapes.line(ax, ay, bx, by, lane.width * 0.3f * scale, (alpha(0xE0, fade) << 24) | 0xFFFFFF);
+                    float length = (float) Math.hypot(dx, dy);
+                    float nx = -dy / length, ny = dx / length;
+                    int[] colors = {AURORA_PINK, AURORA, AURORA_MINT};
+                    int[] alphas = {0xAA, 0xD2, 0xBE};
+                    float ribbon = lane.width * 0.5f;
+                    for (int k = 0; k < 3; k++) {
+                        int steps = Math.max(8, (int) (length * (t1 - t0) / 5));
+                        float px = 0, py = 0;
+                        for (int i = 0; i <= steps; i++) {
+                            float s = t0 + (t1 - t0) * i / steps;
+                            float wave = (float) Math.sin(s * length * 0.07f + time * 6 + k * 1.8f) * ribbon
+                                    + (k - 1) * ribbon;
+                            float qx = ox + (lane.ax + dx * s + nx * wave) * scale;
+                            float qy = oy + (lane.ay + dy * s + ny * wave) * scale;
+                            if (i > 0) {
+                                shapes.line(px, py, qx, qy, ribbon * scale, (alpha(alphas[k], fade * shimmer) << 24) | colors[k]);
+                                shapes.line(px, py, qx, qy, 1 * scale, (alpha(0xC8, fade) << 24) | 0xFFFFFF);
+                            }
+                            px = qx;
+                            py = qy;
+                        }
+                    }
                 }
                 case CHAIN -> {
+                    // A thick zigzag bolt in the Electric palette, flickering every frame.
                     int seed = (int) (time * 20) + System.identityHashCode(lane);
-                    jagged(shapes, ax, ay, bx, by, 3f * scale, 7 * scale, seed, 0xC0000000 | THUNDER);
-                    jagged(shapes, ax, ay, bx, by, 1.2f * scale, 7 * scale, seed, 0xF0FFFFFF);
-                    shapes.disc(ax, ay, 4 * scale, 0xFF000000 | THUNDER);
+                    jagged(shapes, ax, ay, bx, by, 6f * scale, 9 * scale, seed, 0xFF000000 | ELECTRIC[0]);
+                    jagged(shapes, ax, ay, bx, by, 4f * scale, 9 * scale, seed, 0xFF000000 | ELECTRIC[2]);
+                    jagged(shapes, ax, ay, bx, by, 2f * scale, 9 * scale, seed, 0xFFFFFFFF);
                 }
             }
         }
@@ -343,103 +461,266 @@ final class AttackEffects {
             if (wave.warning > 0) {
                 continue;
             }
+            // Kyogre: the water floods the ground behind a bright foam line and drains away in ripples.
             float extent = wave.alongX ? CaptureGame.HEIGHT : CaptureGame.WIDTH;
             float lo = wave.gapCenter - wave.gapHalf, hi = wave.gapCenter + wave.gapHalf;
             float[][] spans = {{0, lo}, {hi, extent}};
             float half = CaptureGame.Wave.BAND / 2;
+            float lead = wave.pos + wave.direction * half;
             for (float[] span : spans) {
                 if (span[1] <= span[0]) {
                     continue;
                 }
-                float x1, y1, x2, y2;
-                if (wave.alongX) {
-                    x1 = wave.pos - half;
-                    x2 = wave.pos + half;
-                    y1 = span[0];
-                    y2 = span[1];
-                } else {
-                    x1 = span[0];
-                    x2 = span[1];
-                    y1 = wave.pos - half;
-                    y2 = wave.pos + half;
+                for (int i = 0; i < 10; i++) {
+                    // The flood: solid over the wave itself, fading out further behind it.
+                    float u1 = lead - wave.direction * (8 + i * 9), u2 = u1 - wave.direction * 9;
+                    int a = i < 2 ? 0xA0 : Math.max(0, 0x96 - i * 15);
+                    waveRect(shapes, wave, u1, u2, span[0], span[1], a << 24 | WATER_PAL[2], ox, oy, scale);
                 }
-                shapes.rect(ox + x1 * scale, oy + y1 * scale, ox + x2 * scale, oy + y2 * scale, 0xC0000000 | WATER);
-                // A lighter crest on the front half of the wave.
-                float c1 = wave.alongX ? (wave.direction > 0 ? wave.pos : x1) : x1;
-                float c2 = wave.alongX ? (wave.direction > 0 ? x2 : wave.pos) : x2;
-                float d1 = wave.alongX ? y1 : (wave.direction > 0 ? wave.pos : y1);
-                float d2 = wave.alongX ? y2 : (wave.direction > 0 ? y2 : wave.pos);
-                shapes.rect(ox + c1 * scale, oy + d1 * scale, ox + c2 * scale, oy + d2 * scale, 0x60000000 | 0x8CC8FF);
-                // Foam along the leading edge.
-                float lead = wave.pos + wave.direction * half;
-                if (wave.alongX) {
-                    shapes.rect(ox + (lead - 2) * scale, oy + y1 * scale, ox + (lead + 2) * scale, oy + y2 * scale,
-                            0xF0000000 | FOAM);
-                } else {
-                    shapes.rect(ox + x1 * scale, oy + (lead - 2) * scale, ox + x2 * scale, oy + (lead + 2) * scale,
-                            0xF0000000 | FOAM);
+                for (int i = 1; i < 6; i++) {
+                    float u = lead - wave.direction * (8 + i * 17);
+                    int a = 0xB4 - i * 25;
+                    for (float v = span[0] + (i * 5) % 9; v + 4 < span[1]; v += 9) {
+                        waveRect(shapes, wave, u, u + 1, v, v + 4, a << 24 | WATER_PAL[3], ox, oy, scale);
+                    }
                 }
+                waveRect(shapes, wave, lead, lead - wave.direction * 8, span[0], span[1], 0xFF000000 | WATER_PAL[3], ox, oy, scale);
+                waveRect(shapes, wave, lead - wave.direction * 2, lead + wave.direction * 2, span[0], span[1], 0xFFFFFFFF,
+                        ox, oy, scale);
+                waveRect(shapes, wave, lead + wave.direction * 2, lead + wave.direction * 3, span[0], span[1],
+                        0xFF000000 | WATER_PAL[0], ox, oy, scale);
             }
         }
         for (CaptureGame.Beam beam : game.beams) {
             if (!beam.live()) {
                 continue;
             }
+            // Layered like the attack sprites: outline, shadow, colour, light and a white-hot core.
             float angle = beam.angle();
             float px = ox + game.x * scale, py = oy + game.y * scale;
             float ex = px + (float) Math.cos(angle) * 400 * scale, ey = py + (float) Math.sin(angle) * 400 * scale;
-            shapes.line(px, py, ex, ey, 12 * scale * shimmer, 0x70000000 | (art.color() & 0xFFFFFF));
-            shapes.line(px, py, ex, ey, 6 * scale, 0xD0000000 | streakColor());
-            shapes.line(px, py, ex, ey, 2.5f * scale, 0xFFFFFFFF);
-            shapes.disc(px, py, 9 * scale * shimmer, 0xB0FFFFFF);
+            int color = art.color() & 0xFFFFFF;
+            shapes.line(px, py, ex, ey, 14 * scale, 0xFF000000 | OUTLINE);
+            shapes.line(px, py, ex, ey, 12 * scale, 0xFF000000 | darken(color));
+            shapes.line(px, py, ex, ey, 8 * scale, 0xFF000000 | color);
+            shapes.line(px, py, ex, ey, 4 * scale, 0xFF000000 | streakColor());
+            shapes.line(px, py, ex, ey, 2 * scale, 0xFFFFFFFF);
         }
         for (CaptureGame.Orbiter orbiter : game.orbiters) {
+            // A thin blade of white light with a soft pink glow.
             float cx = ox + game.orbiterX(orbiter) * scale, cy = oy + game.orbiterY(orbiter) * scale;
             float fade = Math.min(1, orbiter.life / 0.4f);
             float facing = orbiter.angle + (float) Math.PI / 2;
-            shapes.arc(cx, cy, 6 * scale, 3.5f * scale, facing - 1.4f, 2.8f, (alpha(0xE0, fade) << 24) | CRESCENT);
-            shapes.arc(cx, cy, 6.5f * scale, 1.2f * scale, facing - 1.1f, 2.2f, (alpha(0xFF, fade) << 24) | 0xFFFFFF);
+            shapes.arc(cx, cy, 7 * scale, 5 * scale, facing - 1.4f, 2.8f, (alpha(0x8C, fade) << 24) | CRESCENT);
+            shapes.arc(cx, cy, 6.5f * scale, 1.6f * scale, facing - 1.2f, 2.4f, (alpha(0xFF, fade) << 24) | 0xFFFFFF);
+        }
+        for (CaptureGame.Projectile p : game.projectiles) {
+            if (p.style == CaptureGame.AttackStyle.MIST_BALLS) {
+                // A swirl spinning round each Mist Ball.
+                float start = time * 12 + System.identityHashCode(p) % 7;
+                shapes.arc(ox + p.x * scale, oy + p.y * scale, p.radius * 2 * scale, 2 * scale, start, 2.1f,
+                        0xE0000000 | PSYCHIC[3]);
+            }
+        }
+        for (CaptureGame.Hazard hazard : game.hazards) {
+            if (hazard.style == CaptureGame.AttackStyle.RAIN && !hazard.exploding()
+                    && rainKind() == AttackArt.Element.ELECTRIC) {
+                // Zapdos: a short bolt striking down onto the marker.
+                float hx = ox + hazard.x * scale, hy = oy + (hazard.y - fallHeight(hazard)) * scale;
+                int seed = (int) (time * 20) + System.identityHashCode(hazard);
+                jagged(shapes, hx, hy - 30 * scale, hx, hy + 2 * scale, 4 * scale, 6 * scale, seed, 0xFF000000 | ELECTRIC[0]);
+                jagged(shapes, hx, hy - 30 * scale, hx, hy + 2 * scale, 2 * scale, 6 * scale, seed, 0xFFFFFFFF);
+            } else if (hazard.style == CaptureGame.AttackStyle.RAIN && !hazard.exploding()
+                    && rainKind() == AttackArt.Element.FIRE) {
+                // Moltres: a streak of flame above each falling fireball.
+                float hx = ox + hazard.x * scale, hy = oy + (hazard.y - fallHeight(hazard)) * scale;
+                shapes.line(hx, hy - 18 * scale, hx, hy, 3 * scale, 0xA0FFC23E);
+            }
+        }
+        if (trailCount > 1) {
+            // Latios and Latias: rings left in the wake of their laps, shrinking and fading.
+            for (int i = trailCount - 1; i >= 1; i--) {
+                float r = game.radius * (1.6f - i * 0.11f);
+                shapes.ring(ox + trail[2 * i] * scale, oy + trail[2 * i + 1] * scale, r * scale, 2 * scale,
+                        (alpha(0xFF - i * 26, 1) << 24) | AFTERIMAGE);
+            }
         }
         float barrier = game.barrierRadius();
         if (barrier > 0) {
+            // Mewtwo: two outlined rings with glowing dots running between them, like a Ranger sign circle.
             float fade = game.barrierFade();
             float px = ox + game.x * scale, py = oy + game.y * scale;
             boolean up = game.isBarrierUp();
-            shapes.disc(px, py, barrier * scale, (alpha(up ? 0x30 : 0x14, fade) << 24) | PSYCHIC);
-            shapes.ring(px, py, barrier * scale, (up ? 2.5f : 1.2f) * scale, (alpha(0xD0, fade * shimmer) << 24) | PSYCHIC);
-            // Six panels spinning round the barrier's edge.
-            for (int i = 0; i < 6; i++) {
-                float a = time * 1.5f + (float) (Math.PI * 2 * i / 6);
-                shapes.arc(px, py, (barrier - 3) * scale, 1.5f * scale, a, 0.6f, (alpha(0xC0, fade) << 24) | 0xFFFFFF);
+            float strength = up ? 1 : 0.5f;
+            shapes.disc(px, py, barrier * scale, (alpha(0x30, fade * strength) << 24) | PSYCHIC[3]);
+            shapes.ring(px, py, barrier * scale, 6 * scale, (alpha(0xFF, fade * strength) << 24) | PSYCHIC[0]);
+            shapes.ring(px, py, barrier * scale, 4 * scale, (alpha(0xFF, fade * strength * shimmer) << 24) | PSYCHIC[2]);
+            shapes.ring(px, py, (barrier - 7) * scale, 4 * scale, (alpha(0xFF, fade * strength) << 24) | PSYCHIC[0]);
+            shapes.ring(px, py, (barrier - 7) * scale, 2 * scale, (alpha(0xFF, fade * strength) << 24) | PSYCHIC[2]);
+            for (int i = 0; i < 8; i++) {
+                float a = (float) (Math.PI / 4 * i) - time * 3;
+                float r = (barrier - 3.5f) * scale;
+                shapes.disc(px + (float) Math.cos(a) * r, py + (float) Math.sin(a) * r, 2 * scale,
+                        (alpha(0xFF, fade) << 24) | PSYCHIC[4]);
             }
         }
         if (game.isWindy()) {
+            // Lugia: long dithered streaks drifting with the wind, wrapped around the arena.
             float wx = game.windX(), wy = game.windY();
             float len = (float) Math.hypot(wx, wy);
             float ux = wx / len, uy = wy / len;
-            for (int i = 0; i < 14; i++) {
-                // Streaks drifting with the wind, wrapped around the arena.
-                float sx = ((i * 73.3f + time * wx * 2.2f) % CaptureGame.WIDTH + CaptureGame.WIDTH) % CaptureGame.WIDTH;
-                float sy = ((i * 41.7f + time * wy * 2.2f) % CaptureGame.HEIGHT + CaptureGame.HEIGHT) % CaptureGame.HEIGHT;
-                shapes.line(ox + sx * scale, oy + sy * scale, ox + (sx + ux * 22) * scale, oy + (sy + uy * 22) * scale,
-                        1.5f * scale, 0x90FFFFFF);
+            float dot = Math.max(1, scale);
+            for (int i = 0; i < 16; i++) {
+                float sx = ((i * 83.3f + time * wx * 2.6f) % CaptureGame.WIDTH + CaptureGame.WIDTH) % CaptureGame.WIDTH;
+                float sy = ((i * 29.7f + time * wy * 2.6f) % CaptureGame.HEIGHT + CaptureGame.HEIGHT) % CaptureGame.HEIGHT;
+                for (int k = 0; k < 20; k++) {
+                    if ((k + i) % 3 == 0) {
+                        continue;
+                    }
+                    float qx = ox + (sx + ux * k * 2) * scale, qy = oy + (sy + uy * k * 2) * scale;
+                    shapes.rect(qx, qy, qx + dot, qy + dot, 0xFF000000 | (k > 10 ? FLYING[3] : FLYING[2]));
+                }
             }
         }
         if (game.rewindFx >= 0) {
+            // Celebi: a clock face where it lands, its hand spinning backwards.
             float fade = 1 - game.rewindFx / CaptureGame.REWIND_FX_TIME;
             float fx = ox + game.rewindFromX * scale, fy = oy + game.rewindFromY * scale;
             float tx = ox + game.x * scale, ty = oy + game.y * scale;
-            int color = (alpha(0xF0, fade) << 24) | 0xB8FF8A;
-            shapes.disc(tx, ty, game.radius * 1.4f * scale, (alpha(0x50, fade) << 24) | 0xB8FF8A);
-            shapes.ring(fx, fy, game.radius * scale * (1 + game.rewindFx * 1.5f), 3 * scale, color);
-            dashed(shapes, fx, fy, tx, ty, 3 * scale, 6 * scale, color);
-            // A clock face where it lands, its hand turning back.
-            shapes.ring(tx, ty, game.radius * 1.4f * scale, 1.5f * scale, color);
-            float hand = -game.rewindFx * 12;
-            shapes.line(tx, ty, tx + (float) Math.cos(hand) * game.radius * scale, ty + (float) Math.sin(hand) * game.radius * scale,
-                    1.5f * scale, color);
+            float r = game.radius * 1.6f;
+            int light = (alpha(0xF0, fade) << 24) | GRASS[3], dark = (alpha(0xF0, fade) << 24) | GRASS[0];
+            shapes.ring(fx, fy, game.radius * scale * (1 + game.rewindFx * 1.5f), 2 * scale, light);
+            dashed(shapes, fx, fy, tx, ty, 2 * scale, 6 * scale, light);
+            shapes.ring(tx, ty, r * scale, 4 * scale, dark);
+            shapes.ring(tx, ty, (r - 0.5f) * scale, 2 * scale, light);
+            for (int i = 0; i < 12; i++) {
+                float a = (float) (Math.PI / 6 * i);
+                float d = (r - 4) * scale;
+                shapes.rect(tx + (float) Math.cos(a) * d - 0.5f * scale, ty + (float) Math.sin(a) * d - 0.5f * scale,
+                        tx + (float) Math.cos(a) * d + 0.5f * scale, ty + (float) Math.sin(a) * d + 0.5f * scale,
+                        (alpha(0xFF, fade) << 24) | GRASS[4]);
+            }
+            float hand = -game.rewindFx * 18;
+            float hx = tx + (float) Math.cos(hand) * (r - 5) * scale, hy = ty + (float) Math.sin(hand) * (r - 5) * scale;
+            shapes.line(tx, ty, hx, hy, 3 * scale, dark);
+            shapes.line(tx, ty, hx, hy, 1 * scale, (alpha(0xFF, fade) << 24) | GRASS[4]);
         }
         graphics.flush();
+
+        AttackArt.begin();
+        for (CaptureGame.Lane lane : game.lanes) {
+            if (lane.kind == CaptureGame.LaneKind.FISSURE && lane.live() && lane.front() < 1) {
+                // Fire bursts riding the front of the eruption.
+                float[] front = along(crack(lane), lane.front());
+                AttackArt.blast(graphics, AttackArt.Blast.FIRE, 3 + (int) (time * 12) % 3, ox + front[0] * scale,
+                        oy + (front[1] - 6) * scale, 29 * scale, 0xFFFFFF, 1);
+            }
+        }
+        for (CaptureGame.Lane lane : game.lanes) {
+            if (lane.kind == CaptureGame.LaneKind.DIVE && lane.live() && lane.front() < 1) {
+                // The Dragon projectile's flame at double size, diving along the lane.
+                float t = lane.front();
+                AttackArt.sprite(graphics, AttackArt.Element.DRAGON, (int) (time * 12) % 4,
+                        ox + (lane.ax + (lane.bx - lane.ax) * t) * scale, oy + (lane.ay + (lane.by - lane.ay) * t) * scale,
+                        32 * scale, (float) Math.atan2(lane.by - lane.ay, lane.bx - lane.ax), 0xFFFFFF, 1);
+            }
+        }
+        for (CaptureGame.Beam beam : game.beams) {
+            if (beam.live()) {
+                float angle = beam.angle();
+                AttackArt.signature(graphics, AttackArt.SIGNATURE_BURST, ox + (game.x + (float) Math.cos(angle) * 10) * scale,
+                        oy + (game.y + (float) Math.sin(angle) * 10) * scale, 22 * scale * (0.9f + 0.1f * shimmer),
+                        time * 4, streakColor(), 1);
+            }
+        }
+    }
+
+    /** The blast row for a signature attack's marker or burst. */
+    private AttackArt.Blast signatureBlast(CaptureGame.Hazard hazard, boolean warning) {
+        if (hazard.style == CaptureGame.AttackStyle.PILLARS || (!warning && rainKind() == AttackArt.Element.FIRE)) {
+            return AttackArt.Blast.FIRE;
+        }
+        return AttackArt.Blast.STEAM;
+    }
+
+    /** A rectangle in a wave's own terms: u runs the way it travels, v along its front. */
+    private static void waveRect(Shapes shapes, CaptureGame.Wave wave, float u1, float u2, float v1, float v2, int color,
+                                 float ox, float oy, float scale) {
+        float a = Math.min(u1, u2), b = Math.max(u1, u2);
+        if (wave.alongX) {
+            shapes.rect(ox + a * scale, oy + v1 * scale, ox + b * scale, oy + v2 * scale, color);
+        } else {
+            shapes.rect(ox + v1 * scale, oy + a * scale, ox + v2 * scale, oy + b * scale, color);
+        }
+    }
+
+    /** Which bird's storm falls: Moltres's fireballs, Zapdos's bolts or Articuno's icicles. */
+    private AttackArt.Element rainKind() {
+        return switch (art.missile()) {
+            case FIRE, LAVA, STEAM -> AttackArt.Element.FIRE;
+            case ELECTRIC -> AttackArt.Element.ELECTRIC;
+            case ICE, WATER, BUBBLE -> AttackArt.Element.ICE;
+            default -> art.missile();
+        };
+    }
+
+    /** How high above its marker a falling drop of the storm still is. */
+    private static float fallHeight(CaptureGame.Hazard hazard) {
+        return Math.max(0, hazard.timer / hazard.warning) * 90;
+    }
+
+    /** Part of a polyline of arena points, from fraction t0 to t1 of its length, with rounded joints. */
+    private static void polyline(Shapes shapes, float[] points, float t0, float t1, float thickness, int color, float ox,
+                                 float oy, float scale) {
+        if (t1 <= t0) {
+            return;
+        }
+        int n = points.length / 2;
+        float total = 0;
+        for (int i = 1; i < n; i++) {
+            total += (float) Math.hypot(points[2 * i] - points[2 * i - 2], points[2 * i + 1] - points[2 * i - 1]);
+        }
+        float from = t0 * total, to = t1 * total, walked = 0;
+        for (int i = 1; i < n; i++) {
+            float x0 = points[2 * i - 2], y0 = points[2 * i - 1], x1 = points[2 * i], y1 = points[2 * i + 1];
+            float seg = (float) Math.hypot(x1 - x0, y1 - y0);
+            float a = Math.max(from, walked), b = Math.min(to, walked + seg);
+            if (b > a && seg > 0) {
+                float ka = (a - walked) / seg, kb = (b - walked) / seg;
+                float sx = ox + (x0 + (x1 - x0) * ka) * scale, sy = oy + (y0 + (y1 - y0) * ka) * scale;
+                float ex = ox + (x0 + (x1 - x0) * kb) * scale, ey = oy + (y0 + (y1 - y0) * kb) * scale;
+                shapes.line(sx, sy, ex, ey, thickness, color);
+                if (b < to) {
+                    shapes.disc(ex, ey, thickness / 2, color);
+                }
+            }
+            walked += seg;
+        }
+    }
+
+    /** The point a fraction t along a polyline of arena points. */
+    private static float[] along(float[] points, float t) {
+        int n = points.length / 2;
+        float total = 0;
+        for (int i = 1; i < n; i++) {
+            total += (float) Math.hypot(points[2 * i] - points[2 * i - 2], points[2 * i + 1] - points[2 * i - 1]);
+        }
+        float goal = Math.max(0, Math.min(1, t)) * total;
+        for (int i = 1; i < n; i++) {
+            float x0 = points[2 * i - 2], y0 = points[2 * i - 1], x1 = points[2 * i], y1 = points[2 * i + 1];
+            float seg = (float) Math.hypot(x1 - x0, y1 - y0);
+            if (goal <= seg || i == n - 1) {
+                float k = seg == 0 ? 0 : Math.min(1, goal / seg);
+                return new float[]{x0 + (x1 - x0) * k, y0 + (y1 - y0) * k};
+            }
+            goal -= seg;
+        }
+        return new float[]{points[0], points[1]};
+    }
+
+    private static int darken(int color) {
+        int r = (color >> 16) & 0xFF, g = (color >> 8) & 0xFF, b = color & 0xFF;
+        return (r * 3 / 5) << 16 | (g * 3 / 5) << 8 | b * 3 / 5;
     }
 
     private static int alpha(int alpha, float fade) {

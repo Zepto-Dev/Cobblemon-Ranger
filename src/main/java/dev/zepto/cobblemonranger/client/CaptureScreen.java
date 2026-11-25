@@ -632,7 +632,7 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
         }
     }
 
-    /** Darkrai's darkness: everything but a small circle round the cursor goes black. */
+    /** Darkrai's darkness: a deep purple-black void with a wobbling, wispy edge round the cursor, and eyes in the dark. */
     private void drawDarkness(GuiGraphics graphics) {
         float dark = game.darkness();
         if (dark <= 0) {
@@ -643,12 +643,30 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
         Shapes shapes = new Shapes(graphics);
         float cx = sx(mouseArenaX), cy = sy(mouseArenaY);
         float hole = 42 * scale, far = (CaptureGame.WIDTH + CaptureGame.HEIGHT) * scale;
-        int alpha = (int) (0xF2 * dark);
-        // A thick ring whose hole is the lit circle, with a soft edge.
-        shapes.ring(cx, cy, hole + far / 2, far, alpha << 24 | 0x05040A);
-        for (int i = 0; i < 4; i++) {
-            float r = hole - i * 4 * scale;
-            shapes.ring(cx, cy, r + 2 * scale, 4 * scale, (int) (alpha * (0.7f - i * 0.17f)) << 24 | 0x05040A);
+        float time = (System.nanoTime() % 1_000_000_000_000L) / 1e9f;
+        int alpha = (int) (0xF5 * dark), edge = (int) (0xC8 * dark);
+        float reach = hole + 9 * scale;
+        shapes.ring(cx, cy, reach + far / 2, far, alpha << 24 | 0x100C10);
+        // The edge wobbles: each slice of it sits at its own distance, a lighter wisp then the void.
+        int slices = 64;
+        float sweep = (float) (Math.PI * 2 / slices);
+        for (int i = 0; i < slices; i++) {
+            float a = i * sweep;
+            float rim = hole + 3 * scale * (float) Math.sin(a * 7 + time * 3);
+            float voidStart = rim + 6 * scale;
+            shapes.arc(cx, cy, (voidStart + reach) / 2, reach - voidStart + 0.5f, a, sweep * 1.05f, alpha << 24 | 0x100C10);
+            shapes.arc(cx, cy, rim + 3 * scale, 6 * scale, a, sweep * 1.05f, edge << 24 | 0x2E2430);
+        }
+        // Glowing eyes that blink open here and there in the dark.
+        float[][] eyes = {{40, 40}, {280, 160}, {60, 170}, {250, 30}};
+        for (int i = 0; i < eyes.length; i++) {
+            float ex = sx(eyes[i][0]), ey = sy(eyes[i][1]);
+            if (Math.hypot(ex - cx, ey - cy) < reach + 6 * scale || ((int) (time * 1.5f) + i) % 4 == 0) {
+                continue;
+            }
+            int eye = (int) (0xFF * dark) << 24 | 0xC8A0E0;
+            shapes.rect(ex, ey, ex + 3 * scale, ey + 2 * scale, eye);
+            shapes.rect(ex + 6 * scale, ey, ex + 9 * scale, ey + 2 * scale, eye);
         }
         graphics.flush();
         graphics.disableScissor();

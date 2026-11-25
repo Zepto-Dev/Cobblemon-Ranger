@@ -15,9 +15,22 @@ public final class CaptureMath {
 
     /** Share of the friendship gauge one loop around the Pokémon fills. */
     public static float gainPerLoop(int catchRate, int level, float loopPower) {
+        return gainPerLoop(catchRate, level, loopPower, 1);
+    }
+
+    /**
+     * Share of the friendship gauge one loop fills in a capture of {@code stages} stages. Boss captures (Alphas have
+     * 2 stages, legendaries 3) fill a little slower on top of their harder attacks.
+     */
+    public static float gainPerLoop(int catchRate, int level, float loopPower, int stages) {
         float catchFactor = clamp(catchRate, 1, 255) / 255f;
         float levelFactor = clamp(level, 1, 100) / 100f;
-        return clamp(0.16f * (0.45f + catchFactor) * (1.25f - levelFactor * 0.6f) * loopPower, 0.035f, 0.34f);
+        float gain = clamp(0.16f * (0.45f + catchFactor) * (1.25f - levelFactor * 0.6f) * loopPower, 0.035f, 0.34f);
+        return gain * bossGainFactor(stages);
+    }
+
+    public static float bossGainFactor(int stages) {
+        return stages >= 3 ? 0.85f : stages == 2 ? 0.9f : 1f;
     }
 
     /**

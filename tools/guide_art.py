@@ -204,6 +204,33 @@ def page_assists():
     return img
 
 
+def page_bosses():
+    img, d = canvas(rgb(0x5E9E46))
+    ground(d, 0)
+    # A glowing crack erupting across the arena.
+    crack = [(4, 50), (16, 44), (24, 47), (36, 40), (44, 43)]
+    d.line(crack, fill=OUTLINE, width=3)
+    d.line(crack[:3], fill=FIRE, width=2)
+    d.line(crack[:2], fill=FIRE_LIGHT)
+    sparkle(d, 26, 44, FIRE_LIGHT, 2)
+    # An Alpha's red aura and the shield ring round a big critter.
+    for r, c in ((22, rgb(0x9E2A2F)), (19, RED), (17, rgb(0x5E9E46))):
+        d.ellipse([60 - r, 24 - r * 0.8, 60 + r, 24 + r * 0.8], outline=c)
+    big_critter(img, 60, 26, rgb(0x9C7AE8), rgb(0x6B4FB8), facing=-1)
+    # A small pixel alpha sign.
+    for y, row in enumerate([".##.#", "#..#.", "#..#.", ".##.#"]):
+        for x, c in enumerate(row):
+            if c == "#":
+                d.point((84 + x, 4 + y), fill=RED_LIGHT)
+    # Friendship gauge with two stage notches.
+    d.rectangle([8, 6, 41, 11], fill=OUTLINE)
+    bar(d, 9, 7, 33, 10, 5, GOLD)
+    for x in (19, 30):
+        d.line([x, 3, x, 14], fill=OUTLINE, width=2)
+        d.line([x, 4, x, 13], fill=GOLD if x < 25 else RED_LIGHT)
+    return img
+
+
 def page_partner():
     img, d = canvas()
     big_critter(img, 24, 36)
@@ -286,7 +313,7 @@ def page_signs():
 
 PAGES = {
     "styler": page_styler, "capturing": page_capturing, "browser": page_browser, "friends": page_friends,
-    "assists": page_assists, "partner": page_partner, "field_moves": page_field_moves, "missions": page_missions,
+    "assists": page_assists, "bosses": page_bosses, "partner": page_partner, "field_moves": page_field_moves, "missions": page_missions,
     "upgrades": page_upgrades, "signs": page_signs,
 }
 
@@ -295,7 +322,7 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     for name, draw in PAGES.items():
         frame_border(draw()).save(os.path.join(OUT, name + ".png"))
-    sheet = Image.new("RGBA", (W * 2 * 5 + 40, H * 2 * 2 + 24), NAVY)
+    sheet = Image.new("RGBA", (W * 2 * 5 + 40, H * 2 * 3 + 32), NAVY)
     for i, name in enumerate(PAGES):
         tile = Image.open(os.path.join(OUT, name + ".png")).resize((W * 2, H * 2), Image.NEAREST)
         sheet.paste(tile, (8 + (i % 5) * (W * 2 + 8), 8 + (i // 5) * (H * 2 + 8)))

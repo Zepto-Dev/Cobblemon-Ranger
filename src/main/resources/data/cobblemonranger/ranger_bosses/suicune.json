@@ -1,0 +1,20 @@
+{
+  "species": [
+    "cobblemon:suicune"
+  ],
+  "stages": [
+    [
+      "burst",
+      "shockwave"
+    ],
+    [
+      "aurora",
+      "burst"
+    ],
+    [
+      "aurora",
+      "aurora",
+      "shockwave"
+    ]
+  ]
+}

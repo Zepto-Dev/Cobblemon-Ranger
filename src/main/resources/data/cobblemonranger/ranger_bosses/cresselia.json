@@ -1,0 +1,20 @@
+{
+  "species": [
+    "cobblemon:cresselia"
+  ],
+  "stages": [
+    [
+      "shockwave",
+      "burst"
+    ],
+    [
+      "crescents",
+      "shockwave"
+    ],
+    [
+      "crescents",
+      "crescents",
+      "burst"
+    ]
+  ]
+}

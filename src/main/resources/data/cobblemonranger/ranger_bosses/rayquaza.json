@@ -1,0 +1,20 @@
+{
+  "species": [
+    "cobblemon:rayquaza"
+  ],
+  "stages": [
+    [
+      "dash",
+      "burst"
+    ],
+    [
+      "dive",
+      "dash"
+    ],
+    [
+      "dive",
+      "beam",
+      "beam"
+    ]
+  ]
+}

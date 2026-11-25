@@ -7,6 +7,7 @@ import dev.zepto.cobblemonranger.CobblemonRanger;
 import dev.zepto.cobblemonranger.browser.BrowserData;
 import dev.zepto.cobblemonranger.browser.BrowserManager;
 import dev.zepto.cobblemonranger.browser.GuidePage;
+import dev.zepto.cobblemonranger.capture.BossCapture;
 import dev.zepto.cobblemonranger.capture.PartnerCharge;
 import dev.zepto.cobblemonranger.config.RangerConfig;
 import dev.zepto.cobblemonranger.field.FieldMoveManager;
@@ -431,6 +432,7 @@ public class RangerBrowserScreen extends Screen {
             case BROWSER -> new Object[]{BrowserManager.NEW_SPECIES_XP, BrowserManager.MILESTONES[0],
                     BrowserManager.MILESTONES[BrowserManager.MILESTONES.length - 1]};
             case ASSISTS -> new Object[]{PartnerCharge.FULL};
+            case BOSSES -> new Object[]{BossCapture.ALPHA_STAGES, BossCapture.LEGENDARY_STAGES};
             case PARTNER -> new Object[]{FieldMoveManager.PARTNER_ENERGY_COST,
                     RangerConfig.current(RangerConfig.PARTNER_FIELD_MOVE_COOLDOWN_SECONDS)};
             case MISSIONS -> new Object[]{RangerConfig.current(RangerConfig.MISSION_COOLDOWN_MINUTES)};

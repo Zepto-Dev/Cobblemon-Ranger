@@ -208,8 +208,16 @@ public final class FieldMoveManager {
         Vec3 end = eye.add(player.getLookAngle().scale(TELEKINESIS_RANGE));
         BlockHitResult hit = level.clip(new ClipContext(eye, end, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE,
                 player));
-        if (hit.getType() == HitResult.Type.BLOCK && isTelekinetic(level.getBlockState(hit.getBlockPos()))) {
+        if (hit.getType() != HitResult.Type.BLOCK) {
+            return null;
+        }
+        if (isTelekinetic(level.getBlockState(hit.getBlockPos()))) {
             return hit;
+        }
+        // Levers and buttons are small: aiming at the block they sit on counts too.
+        BlockPos front = hit.getBlockPos().relative(hit.getDirection());
+        if (isTelekinetic(level.getBlockState(front))) {
+            return new BlockHitResult(hit.getLocation(), hit.getDirection(), front, false);
         }
         return null;
     }

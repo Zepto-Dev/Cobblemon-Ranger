@@ -24,7 +24,7 @@ public class FieldMovePickerScreen extends Screen {
     /** Icon atlas from tools/field_move_art.py: 6 x 3 cells of 20x20 in FieldMove order. */
     private static final ResourceLocation ICONS = CobblemonRanger.id("textures/gui/field_moves.png");
     private static final int ICON = 20;
-    private static final int RADIUS = 46;
+    private static final int MIN_RADIUS = 46;
 
     private final List<FieldMove> moves = new ArrayList<>();
     private final List<Boolean> byPartner = new ArrayList<>();
@@ -51,14 +51,19 @@ public class FieldMovePickerScreen extends Screen {
         // No blur or dimming: the world stays visible around the wheel.
     }
 
+    /** Grows with the number of moves so the icons never touch. */
+    private int radius() {
+        return Math.max(MIN_RADIUS, (int) Math.ceil(moves.size() * (ICON + 6) / (2 * Math.PI)));
+    }
+
     private int iconX(int i) {
         double angle = -Math.PI / 2 + i * 2 * Math.PI / moves.size();
-        return width / 2 + (int) Math.round(RADIUS * Math.cos(angle)) - ICON / 2;
+        return width / 2 + (int) Math.round(radius() * Math.cos(angle)) - ICON / 2;
     }
 
     private int iconY(int i) {
         double angle = -Math.PI / 2 + i * 2 * Math.PI / moves.size();
-        return height / 2 + (int) Math.round(RADIUS * Math.sin(angle)) - ICON / 2;
+        return height / 2 + (int) Math.round(radius() * Math.sin(angle)) - ICON / 2;
     }
 
     private void hover(double mouseX, double mouseY) {
@@ -97,13 +102,16 @@ public class FieldMovePickerScreen extends Screen {
         }
         FieldMove move = moves.get(selected);
         Component name = move.displayName();
-        graphics.drawCenteredString(font, name, cx, cy + RADIUS + 16, 0xFFFFFFFF);
+        int textTop = cy + radius() + 14;
+        int boxWidth = Math.max(font.width(name), font.width(move.description())) + 12;
+        graphics.fill(cx - boxWidth / 2, textTop - 3, cx + boxWidth / 2, textTop + 34, 0xC0101820);
+        graphics.drawCenteredString(font, name, cx, textTop, 0xFFFFFFFF);
         Component who = byPartner.get(selected)
                 ? Component.translatable("screen.cobblemonranger.field_moves.partner",
                 FieldMoveManager.PARTNER_ENERGY_COST)
                 : Component.translatable("screen.cobblemonranger.field_moves.friend");
-        graphics.drawCenteredString(font, who, cx, cy + RADIUS + 27, 0xFFA8F0FF);
-        graphics.drawCenteredString(font, move.description(), cx, cy + RADIUS + 38, 0xFFB0BCC8);
+        graphics.drawCenteredString(font, who, cx, textTop + 11, 0xFFA8F0FF);
+        graphics.drawCenteredString(font, move.description(), cx, textTop + 22, 0xFFB0BCC8);
     }
 
     private void choose(int index) {

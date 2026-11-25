@@ -80,6 +80,11 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
     /** Hearts rising from the Pokémon when a Charm-boosted loop lands: x, y, age. */
     private final List<float[]> heartPops = new ArrayList<>();
     private int lastCharmLoops;
+    /** The attack the Pokémon is winding up, for the warning message. */
+    private CaptureGame.AttackStyle windupStyle;
+    private float mouseArenaX = CaptureGame.WIDTH / 2, mouseArenaY = CaptureGame.HEIGHT / 2;
+    /** Counts up from 0 when a boss enters a new stage, for its roar flash. */
+    private float stageFx = -1;
 
     public CaptureScreen(OpenCapturePayload payload) {
         super(Component.translatable("screen.cobblemonranger.capture"));
@@ -100,7 +105,7 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
         this.game = new CaptureGame(payload.pokemonType(), payload.secondaryType(), payload.catchRate(), payload.level(),
                 payload.energy(),
                 payload.maxEnergy(), payload.lineLength(), payload.loopPower(), sizeHint,
-                System.nanoTime(), this);
+                System.nanoTime(), this, payload.boss(), payload.stages());
         this.attacks = new AttackEffects(game, AttackArt.resolve(payload.pokemonType(), arena.theme(),
                 arena.plantTint(), typeColor(payload.pokemonType())));
     }
@@ -115,7 +120,7 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
         playSound(SoundEvents.BEACON_ACTIVATE, 1.8f);
         if (!musicStarted) {
             musicStarted = true;
-            CaptureMusic.start();
+            CaptureMusic.start(game.isBoss());
         }
     }
 
@@ -151,6 +156,9 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
         }
         if (dragonFx >= 0) {
             dragonFx = dragonFx + dt > DRAGON_FX_TIME ? -1 : dragonFx + dt;
+        }
+        if (stageFx >= 0) {
+            stageFx = stageFx + dt > 1f ? -1 : stageFx + dt;
         }
         if (game.charmLoops() < lastCharmLoops) {
             heartPops.add(new float[]{game.x, game.y - game.radius, 0});
@@ -330,6 +338,8 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        mouseArenaX = toArenaX(mouseX);
+        mouseArenaY = toArenaY(mouseY);
         advance();
         super.render(graphics, mouseX, mouseY, partialTick);
 
@@ -347,6 +357,7 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
         graphics.pose().translate(0, 0, 200);
         drawEffects(graphics);
         graphics.flush();
+        drawDarkness(graphics);
         drawFriendshipGauge(graphics);
         graphics.pose().popPose();
         graphics.pose().popPose();
@@ -481,6 +492,21 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
         float py = sy(game.y);
         float r = game.radius * scale;
         boolean blink = game.isWindingUp() && (System.currentTimeMillis() / 80) % 2 == 0;
+        if (game.isBoss()) {
+            // Alphas glow red and legendaries gold, brighter with every stage.
+            float pulse = 0.5f + 0.5f * (float) Math.sin(System.currentTimeMillis() / 160.0);
+            int aura = game.bossKind == 1 ? 0xFF3A30 : 0xFFD24A;
+            float strength = 0.6f + 0.2f * game.stage();
+            Shapes shapes = new Shapes(graphics);
+            for (int i = 0; i < 3; i++) {
+                int alpha = (int) ((0x30 - i * 0x0C) * strength * (0.7f + 0.3f * pulse));
+                shapes.disc(px, py, r * (1.25f + 0.22f * i + 0.06f * pulse), alpha << 24 | aura);
+            }
+            if (stageFx >= 0) {
+                shapes.ring(px, py, r * (1.2f + stageFx * 3f), 3 * scale * (1 - stageFx), (int) (0xE0 * (1 - stageFx)) << 24 | aura);
+            }
+            graphics.flush();
+        }
 
         if (pokemonEntity == null) {
             Shapes shapes = new Shapes(graphics);
@@ -527,6 +553,20 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
         if (blink) {
             Shapes shapes = new Shapes(graphics);
             shapes.ring(px, py, r * 1.2f, 2f, 0xC0FF4040);
+            graphics.flush();
+        }
+        if (game.isShielded()) {
+            // A shimmering shell while loops don't count; it flashes when a loop bounces off.
+            float flicker = 0.6f + 0.4f * (float) Math.sin(System.currentTimeMillis() / 60.0);
+            float fade = Math.min(1, game.shieldTime() / 0.3f);
+            float hit = game.shieldBlockFx();
+            Shapes shapes = new Shapes(graphics);
+            shapes.disc(px, py, r * 1.5f, (int) ((0x28 + 0x50 * hit) * fade) << 24 | 0xBFEFFF);
+            shapes.ring(px, py, r * 1.5f, (2f + 2f * hit) * scale, (int) (0xD0 * flicker * fade) << 24 | 0xE8FAFF);
+            for (int i = 0; i < 6; i++) {
+                float a = System.currentTimeMillis() / 400f + (float) (Math.PI * 2 * i / 6);
+                shapes.arc(px, py, r * 1.32f, 1.2f * scale, a, 0.5f, (int) (0x90 * fade) << 24 | 0xFFFFFF);
+            }
             graphics.flush();
         }
         if (game.isHeld() || game.isBogged()) {
@@ -583,6 +623,53 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
                 graphics.fill(x, top, x + Math.max(1, Math.round(segment * part)), top + 1, 0xFFFFF0B0);
             }
         }
+        // A boss's stage marks: red notches above and below the gauge, lit once passed.
+        for (int k = 1; k < game.stages; k++) {
+            int x = left + Math.round(total * game.stageMark(k));
+            int color = game.stage() >= k ? GOLD : 0xFFE0403A;
+            graphics.fill(x - 1, top - 4, x + 1, top + 8, OUTLINE);
+            graphics.fill(x - 1, top - 3, x, top + 7, color);
+        }
+    }
+
+    /** Darkrai's darkness: a deep purple-black void with a wobbling, wispy edge round the cursor, and eyes in the dark. */
+    private void drawDarkness(GuiGraphics graphics) {
+        float dark = game.darkness();
+        if (dark <= 0) {
+            return;
+        }
+        graphics.enableScissor((int) arenaX, (int) arenaY, (int) Math.ceil(arenaX + CaptureGame.WIDTH * scale),
+                (int) Math.ceil(arenaY + CaptureGame.HEIGHT * scale));
+        Shapes shapes = new Shapes(graphics);
+        float cx = sx(mouseArenaX), cy = sy(mouseArenaY);
+        float hole = 42 * scale, far = (CaptureGame.WIDTH + CaptureGame.HEIGHT) * scale;
+        float time = (System.nanoTime() % 1_000_000_000_000L) / 1e9f;
+        int alpha = (int) (0xF5 * dark), edge = (int) (0xC8 * dark);
+        float reach = hole + 9 * scale;
+        shapes.ring(cx, cy, reach + far / 2, far, alpha << 24 | 0x100C10);
+        // The edge wobbles: each slice of it sits at its own distance, a lighter wisp then the void.
+        int slices = 64;
+        float sweep = (float) (Math.PI * 2 / slices);
+        for (int i = 0; i < slices; i++) {
+            float a = i * sweep;
+            float rim = hole + 3 * scale * (float) Math.sin(a * 7 + time * 3);
+            float voidStart = rim + 6 * scale;
+            shapes.arc(cx, cy, (voidStart + reach) / 2, reach - voidStart + 0.5f, a, sweep * 1.05f, alpha << 24 | 0x100C10);
+            shapes.arc(cx, cy, rim + 3 * scale, 6 * scale, a, sweep * 1.05f, edge << 24 | 0x2E2430);
+        }
+        // Glowing eyes that blink open here and there in the dark.
+        float[][] eyes = {{40, 40}, {280, 160}, {60, 170}, {250, 30}};
+        for (int i = 0; i < eyes.length; i++) {
+            float ex = sx(eyes[i][0]), ey = sy(eyes[i][1]);
+            if (Math.hypot(ex - cx, ey - cy) < reach + 6 * scale || ((int) (time * 1.5f) + i) % 4 == 0) {
+                continue;
+            }
+            int eye = (int) (0xFF * dark) << 24 | 0xC8A0E0;
+            shapes.rect(ex, ey, ex + 3 * scale, ey + 2 * scale, eye);
+            shapes.rect(ex + 6 * scale, ey, ex + 9 * scale, ey + 2 * scale, eye);
+        }
+        graphics.flush();
+        graphics.disableScissor();
     }
 
     private void drawHud(GuiGraphics graphics, float w, float h) {
@@ -641,6 +728,11 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
         if (payload.shiny()) {
             name = Component.literal("★ ").withStyle(ChatFormatting.GOLD).append(name);
         }
+        if (game.bossKind == 1) {
+            name = Component.literal("α ").withStyle(ChatFormatting.RED).append(name);
+        } else if (game.bossKind == 2) {
+            name = Component.literal("✦ ").withStyle(ChatFormatting.GOLD).append(name);
+        }
         Component levelText = Component.translatable("screen.cobblemonranger.level", payload.level());
         String type = payload.pokemonType() == null ? "" : payload.pokemonType().toLowerCase(Locale.ROOT);
         Component typeText = Component.literal(type.isEmpty() ? "" : Character.toUpperCase(type.charAt(0)) + type.substring(1));
@@ -665,6 +757,10 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
 
         // Effects from assists, as small labels down the right side of the screen.
         List<Component> statuses = new ArrayList<>();
+        if (game.stages > 1) {
+            statuses.add(Component.translatable("screen.cobblemonranger.status.stage", game.stage() + 1, game.stages));
+        }
+        if (game.isShielded()) statuses.add(Component.translatable("screen.cobblemonranger.status.shielded"));
         if (game.isFrozen()) statuses.add(Component.translatable("screen.cobblemonranger.status.frozen"));
         else if (game.isTrapped()) statuses.add(Component.translatable("screen.cobblemonranger.status.trapped"));
         else if (game.isStunned()) statuses.add(Component.translatable("screen.cobblemonranger.status.stunned"));
@@ -696,8 +792,13 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
         } else if (game.phase() == CaptureGame.Phase.INTRO || (playing && game.phaseTime() < HINT_TIME)) {
             message = Component.translatable(payload.assists().isEmpty()
                     ? "screen.cobblemonranger.hint" : "screen.cobblemonranger.hint_assist");
+        } else if (playing && game.isShielded()) {
+            message = Component.translatable("screen.cobblemonranger.shielded", payload.name());
         } else if (playing && game.isWindingUp()) {
-            message = Component.translatable("screen.cobblemonranger.charging", payload.name());
+            message = windupStyle != null && windupStyle.ordinal() > CaptureGame.AttackStyle.ERUPTION.ordinal()
+                    ? Component.translatable("screen.cobblemonranger.charging_signature", payload.name(),
+                    Component.translatable("screen.cobblemonranger.attack." + windupStyle.name().toLowerCase(Locale.ROOT)))
+                    : Component.translatable("screen.cobblemonranger.charging", payload.name());
         }
         if (message != null) {
             List<FormattedCharSequence> lines = font.split(message, (int) (w * 0.62f));
@@ -886,7 +987,43 @@ public class CaptureScreen extends Screen implements CaptureGame.Listener {
 
     @Override
     public void onWindup(CaptureGame.AttackStyle style) {
+        windupStyle = style;
         playSound(SoundEvents.EVOKER_PREPARE_ATTACK, 1.6f);
+    }
+
+    @Override
+    public void onStage(int stage, int stages) {
+        shake = 0.45f;
+        stageFx = 0;
+        assistBanner = Component.translatable(stage == stages - 1 && stages > 2
+                ? "screen.cobblemonranger.boss_final_stage" : "screen.cobblemonranger.boss_stage", payload.name());
+        assistBannerTime = 2.2f;
+        assistColor = game.bossKind == 1 ? 0xFF6A50 : 0xFFD24A;
+        playSound(game.bossKind == 1 ? SoundEvents.RAVAGER_ROAR : SoundEvents.ENDER_DRAGON_GROWL, 1.3f);
+    }
+
+    @Override
+    public void onShieldBlocked() {
+        playSound(SoundEvents.SHIELD_BLOCK, 1.6f);
+    }
+
+    @Override
+    public void onSignature(CaptureGame.AttackStyle style) {
+        playSound(switch (style) {
+            case FISSURE, PILLARS -> SoundEvents.FIRECHARGE_USE;
+            case TIDAL_WAVE -> SoundEvents.PLAYER_SPLASH_HIGH_SPEED;
+            case DIVE, ORBIT_RUSH -> SoundEvents.PHANTOM_SWOOP;
+            case BEAM -> SoundEvents.BEACON_ACTIVATE;
+            case MIST_BALLS, CRESCENTS -> SoundEvents.AMETHYST_BLOCK_RESONATE;
+            case REWIND -> SoundEvents.ILLUSIONER_MIRROR_MOVE;
+            case AURORA -> SoundEvents.AMETHYST_CLUSTER_PLACE;
+            case CHAIN -> SoundEvents.LIGHTNING_BOLT_IMPACT;
+            case DARKNESS -> SoundEvents.WARDEN_NEARBY_CLOSER;
+            case BARRIER -> SoundEvents.BEACON_POWER_SELECT;
+            case GUST -> SoundEvents.BREEZE_WIND_CHARGE_BURST.value();
+            case RAIN -> SoundEvents.TRIDENT_THUNDER.value();
+            default -> SoundEvents.EVOKER_CAST_SPELL;
+        }, 1.2f);
     }
 
     @Override

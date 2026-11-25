@@ -1,6 +1,7 @@
 package dev.zepto.cobblemonranger.network;
 
 import dev.zepto.cobblemonranger.CobblemonRanger;
+import dev.zepto.cobblemonranger.capture.BossCapture;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
@@ -15,12 +16,14 @@ import java.util.UUID;
 /**
  * Server to client: start the capture minigame against the given wild Pokémon. {@code assists} are the Pokémon that
  * can lend a Poké Assist. {@code assistStrength} scales the Partner Pokémon's assist, which can only be used once
- * {@code partnerCharge} loops (carried over from earlier captures) reach {@code partnerChargeFull}.
+ * {@code partnerCharge} loops (carried over from earlier captures) reach {@code partnerChargeFull}. {@code boss} is a
+ * {@link BossCapture.Kind} ordinal, and {@code stages} holds the attack names of each stage of the capture (one empty
+ * list for a normal capture; an empty list means the Pokémon's type attacks).
  */
 public record OpenCapturePayload(int entityId, Component name, String pokemonType, String secondaryType, int catchRate,
                                  int level, boolean shiny, int energy, int maxEnergy, float lineLength, float loopPower,
                                  int lineColor, List<Assist> assists, float assistStrength, int partnerCharge,
-                                 int partnerChargeFull) implements CustomPacketPayload {
+                                 int partnerChargeFull, int boss, List<List<String>> stages) implements CustomPacketPayload {
     public static final Type<OpenCapturePayload> TYPE = new Type<>(CobblemonRanger.id("open_capture"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, OpenCapturePayload> STREAM_CODEC =
@@ -53,6 +56,14 @@ public record OpenCapturePayload(int entityId, Component name, String pokemonTyp
         buf.writeFloat(assistStrength);
         buf.writeVarInt(partnerCharge);
         buf.writeVarInt(partnerChargeFull);
+        buf.writeVarInt(boss);
+        buf.writeVarInt(stages.size());
+        for (List<String> stage : stages) {
+            buf.writeVarInt(stage.size());
+            for (String attack : stage) {
+                buf.writeUtf(attack);
+            }
+        }
     }
 
     private static OpenCapturePayload read(RegistryFriendlyByteBuf buf) {
@@ -77,8 +88,23 @@ public record OpenCapturePayload(int entityId, Component name, String pokemonTyp
         float assistStrength = buf.readFloat();
         int partnerCharge = buf.readVarInt();
         int partnerChargeFull = buf.readVarInt();
+        int boss = buf.readVarInt();
+        int stageCount = Math.min(buf.readVarInt(), 5);
+        List<List<String>> stages = new ArrayList<>();
+        for (int i = 0; i < stageCount; i++) {
+            int attackCount = Math.min(buf.readVarInt(), 16);
+            List<String> attacks = new ArrayList<>();
+            for (int k = 0; k < attackCount; k++) {
+                attacks.add(buf.readUtf(64));
+            }
+            stages.add(attacks);
+        }
+        if (stages.isEmpty()) {
+            stages.add(List.of());
+        }
         return new OpenCapturePayload(entityId, name, type, secondaryType, catchRate, level, shiny, energy, maxEnergy,
-                lineLength, loopPower, lineColor, assists, assistStrength, partnerCharge, partnerChargeFull);
+                lineLength, loopPower, lineColor, assists, assistStrength, partnerCharge, partnerChargeFull, boss,
+                stages);
     }
 
     @Override

@@ -1,0 +1,22 @@
+{
+  "species": [
+    "cobblemon:articuno",
+    "cobblemon:zapdos",
+    "cobblemon:moltres"
+  ],
+  "stages": [
+    [
+      "burst",
+      "dash"
+    ],
+    [
+      "rain",
+      "burst"
+    ],
+    [
+      "rain",
+      "rain",
+      "dash"
+    ]
+  ]
+}

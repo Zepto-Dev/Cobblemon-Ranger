@@ -1,0 +1,21 @@
+{
+  "species": [
+    "cobblemon:darkrai"
+  ],
+  "stages": [
+    [
+      "shockwave",
+      "burst"
+    ],
+    [
+      "darkness",
+      "shockwave",
+      "burst"
+    ],
+    [
+      "darkness",
+      "burst",
+      "shockwave"
+    ]
+  ]
+}

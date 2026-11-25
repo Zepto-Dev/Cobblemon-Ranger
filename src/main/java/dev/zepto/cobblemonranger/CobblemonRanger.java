@@ -1,5 +1,6 @@
 package dev.zepto.cobblemonranger;
 
+import dev.zepto.cobblemonranger.capture.BossCapture;
 import dev.zepto.cobblemonranger.capture.CaptureManager;
 import dev.zepto.cobblemonranger.capture.FriendManager;
 import dev.zepto.cobblemonranger.capture.PartnerManager;
@@ -59,6 +60,7 @@ public final class CobblemonRanger {
         }));
 
         NeoForge.EVENT_BUS.register(CaptureManager.class);
+        NeoForge.EVENT_BUS.register(BossCapture.class);
         NeoForge.EVENT_BUS.register(BrowserManager.class);
         NeoForge.EVENT_BUS.register(FriendManager.class);
         NeoForge.EVENT_BUS.register(PartnerManager.class);

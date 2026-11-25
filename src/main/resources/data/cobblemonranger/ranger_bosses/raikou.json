@@ -1,0 +1,20 @@
+{
+  "species": [
+    "cobblemon:raikou"
+  ],
+  "stages": [
+    [
+      "shockwave",
+      "dash"
+    ],
+    [
+      "chain",
+      "shockwave"
+    ],
+    [
+      "chain",
+      "chain",
+      "dash"
+    ]
+  ]
+}

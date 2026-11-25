@@ -1,0 +1,20 @@
+{
+  "species": [
+    "cobblemon:mewtwo"
+  ],
+  "stages": [
+    [
+      "shockwave",
+      "burst"
+    ],
+    [
+      "barrier",
+      "shockwave"
+    ],
+    [
+      "barrier",
+      "burst",
+      "dash"
+    ]
+  ]
+}

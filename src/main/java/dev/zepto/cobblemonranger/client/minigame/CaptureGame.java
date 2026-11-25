@@ -44,9 +44,64 @@ public final class CaptureGame {
     /** Ice enclosure test grid, in arena units per cell. */
     private static final int ICE_CELL = 4;
 
+    // Boss captures
+    /** After a boss enters a new stage, loops don't count for this long. */
+    private static final float SHIELD_TIME = 2.2f;
+    /** Each stage adds this much to how hard the Pokémon fights (more shots, bigger waves, shorter cooldowns). */
+    private static final float STAGE_DIFFICULTY = 0.18f;
+    private static final float DARK_TIME = 5.4f;
+    private static final float BARRIER_TIME = 4.5f, BARRIER_WARMUP = 0.6f;
+    private static final float WIND_TIME = 3.2f;
+    public static final float REWIND_FX_TIME = 0.9f;
+
     public enum Phase { INTRO, PLAYING, CAPTURED, FAILED }
 
-    public enum AttackStyle { DASH, BURST, SHOCKWAVE, ERUPTION }
+    /**
+     * What the wild Pokémon attacks with. The first four are the type attacks every Pokémon uses; the rest are the
+     * signature attacks of legendary bosses, named in the {@code ranger_bosses} data files by their lower-case names.
+     */
+    public enum AttackStyle {
+        DASH, BURST, SHOCKWAVE, ERUPTION,
+        /** Groudon: cracks open across the arena and erupt from one end to the other. */
+        FISSURE,
+        /** Kyogre: a wave sweeps the arena, with one gap to slip the line through. */
+        TIDAL_WAVE,
+        /** Rayquaza: streaks dive across the arena in straight lines. */
+        DIVE,
+        /** Rayquaza and Lugia: a beam from the Pokémon sweeps around. */
+        BEAM,
+        /** Latios and Latias: balls of mist that home in on the line. */
+        MIST_BALLS,
+        /** Latios and Latias: very fast laps around the arena. */
+        ORBIT_RUSH,
+        /** Celebi: time skips back. The Pokémon blinks to where it was and the newest part of the line is undone. */
+        REWIND,
+        /** Suicune: aurora walls split the arena for a few seconds. */
+        AURORA,
+        /** Entei: flame pillars burst up under the tip of the line, one after another. */
+        PILLARS,
+        /** Raikou: lightning chains between three points. */
+        CHAIN,
+        /** Cresselia: crescent blades orbit it and spiral outward. */
+        CRESCENTS,
+        /** Darkrai: the arena goes dark except a small circle around the cursor. */
+        DARKNESS,
+        /** Mewtwo: a psychic barrier that breaks any line drawn too close to it. */
+        BARRIER,
+        /** Lugia: wind pushes the line sideways. */
+        GUST,
+        /** Legendary birds: ice, thunder or fire falls in waves. */
+        RAIN;
+
+        public static AttackStyle byName(String name) {
+            for (AttackStyle style : values()) {
+                if (style.name().equalsIgnoreCase(name)) {
+                    return style;
+                }
+            }
+            return null;
+        }
+    }
 
     /**
      * What a Poké Assist does, decided by the helping Pokémon's primary type: every type has its own effect. Effects
@@ -123,11 +178,24 @@ public final class CaptureGame {
 
         /** A water bubble caught the Pokémon. */
         default void onTrapped() {}
+
+        /** A boss moved into a new stage ({@code stage} from 0, of {@code stages}). */
+        default void onStage(int stage, int stages) {}
+
+        /** A loop bounced off a boss's shield at the start of a stage. */
+        default void onShieldBlocked() {}
+
+        /** A signature attack went off, for its sound. */
+        default void onSignature(AttackStyle style) {}
     }
 
     public static final class Projectile {
         public float x, y, vx, vy, life;
         public final float radius;
+        /** Turn rate towards the line, in radians a second; 0 flies straight. */
+        float homing;
+        /** The signature attack that fired it, for its art; null for the type's usual projectile. */
+        public AttackStyle style;
 
         Projectile(float x, float y, float vx, float vy, float radius) {
             this.x = x;
@@ -155,12 +223,22 @@ public final class CaptureGame {
         public final float x, y, radius;
         /** Counts down while the warning marker is shown, then goes negative while it explodes. */
         public float timer;
+        /** How long the warning lasts in all. */
+        public final float warning;
+        /** The signature attack that placed it, for its art; null for the type's usual blast. */
+        public AttackStyle style;
 
         Hazard(float x, float y, float radius, float warning) {
             this.x = x;
             this.y = y;
             this.radius = radius;
             this.timer = warning;
+            this.warning = warning;
+        }
+
+        Hazard(float x, float y, float radius, float warning, AttackStyle style) {
+            this(x, y, radius, warning);
+            this.style = style;
         }
 
         public boolean exploding() {
@@ -196,6 +274,128 @@ public final class CaptureGame {
     }
 
     public enum ZoneKind { FIRE_RING, WHIRLWIND, THICKET, WEB, QUICKSAND }
+
+    public enum LaneKind { FISSURE, DIVE, AURORA, CHAIN }
+
+    /**
+     * A straight danger line across the arena from a legendary's signature attack. It shows a warning first, then
+     * goes live from {@code a} towards {@code b} over {@code travel} seconds, and each part stays dangerous for
+     * {@code active} seconds after the front passes it.
+     */
+    public static final class Lane {
+        public final LaneKind kind;
+        public final float ax, ay, bx, by, width, travel, active;
+        /** Counts down while the warning shows, then goes negative while it is live. */
+        public float timer;
+
+        Lane(LaneKind kind, float ax, float ay, float bx, float by, float width, float warning, float travel,
+             float active) {
+            this.kind = kind;
+            this.ax = ax;
+            this.ay = ay;
+            this.bx = bx;
+            this.by = by;
+            this.width = width;
+            this.timer = warning;
+            this.travel = travel;
+            this.active = active;
+        }
+
+        public boolean live() {
+            return timer <= 0;
+        }
+
+        /** How far along the front is, 0 to 1. */
+        public float front() {
+            return travel <= 0 ? (live() ? 1 : 0) : clamp(-timer / travel, 0, 1);
+        }
+
+        /** How far along the oldest still-dangerous part is, 0 to 1. */
+        public float tail() {
+            if (!live()) {
+                return 0;
+            }
+            return travel <= 0 ? (-timer > active ? 1 : 0) : clamp((-timer - active) / travel, 0, 1);
+        }
+
+        boolean finished() {
+            return -timer > travel + active;
+        }
+    }
+
+    /** Kyogre's tidal wave: a band crossing the arena with one gap in it. */
+    public static final class Wave {
+        /** True when the band moves along x (it stands upright); false when it moves along y. */
+        public final boolean alongX;
+        public final float direction, gapCenter, gapHalf;
+        public float pos, warning;
+        public static final float BAND = 24f;
+
+        Wave(boolean alongX, float direction, float gapCenter, float gapHalf, float warning) {
+            this.alongX = alongX;
+            this.direction = direction;
+            this.gapCenter = gapCenter;
+            this.gapHalf = gapHalf;
+            this.warning = warning;
+            float extent = alongX ? WIDTH : HEIGHT;
+            this.pos = direction > 0 ? -BAND : extent + BAND;
+        }
+
+        boolean finished() {
+            float extent = alongX ? WIDTH : HEIGHT;
+            return direction > 0 ? pos > extent + BAND : pos < -BAND;
+        }
+
+        boolean hits(float px, float py) {
+            float along = alongX ? px : py, across = alongX ? py : px;
+            return warning <= 0 && Math.abs(along - pos) < BAND / 2 && Math.abs(across - gapCenter) > gapHalf;
+        }
+    }
+
+    /** A beam from the Pokémon that sweeps through an arc. */
+    public static final class Beam {
+        public final float start, sweep, duration;
+        public float timer;
+
+        Beam(float start, float sweep, float warning, float duration) {
+            this.start = start;
+            this.sweep = sweep;
+            this.timer = warning;
+            this.duration = duration;
+        }
+
+        public boolean live() {
+            return timer <= 0;
+        }
+
+        public float angle() {
+            return start + sweep * clamp(-timer / duration, 0, 1);
+        }
+    }
+
+    /** One of Cresselia's crescent blades, circling the Pokémon and drifting outward. */
+    public static final class Orbiter {
+        public float angle, distance, life;
+        final float spin;
+
+        Orbiter(float angle, float distance, float spin) {
+            this.angle = angle;
+            this.distance = distance;
+            this.spin = spin;
+            this.life = 3.6f;
+        }
+    }
+
+    /** An attack part that starts a little later, like the second of Entei's flame pillars. */
+    private static final class Pending {
+        float delay;
+        final Runnable action;
+
+        Pending(float delay, Runnable action) {
+            this.delay = delay;
+            this.action = action;
+        }
+    }
 
     /** An area an assist leaves on the arena: a circle, or for quicksand the loop's outline. */
     public static final class Zone {
@@ -254,14 +454,21 @@ public final class CaptureGame {
     // Configuration
     private final Random random;
     private final Listener listener;
-    private final float difficulty;
-    private final float speed;
+    private final float baseDifficulty;
+    private float difficulty;
+    private float speed;
+    private final float bossSpeed;
     private final float gainPerLoop;
     private final float lineLength;
     private final int level;
     public final float radius;
     public final AttackStyle signatureAttack;
     public final int maxEnergy;
+    /** Stages of the capture: 1 for a normal one, 2 for an Alpha, 3 for a legendary. */
+    public final int stages;
+    /** 0 for a normal capture, 1 for an Alpha and 2 for a legendary (BossCapture.Kind ordinals). */
+    public final int bossKind;
+    private final List<List<AttackStyle>> stageAttacks = new ArrayList<>();
 
     // State
     private Phase phase = Phase.INTRO;
@@ -297,9 +504,51 @@ public final class CaptureGame {
     public final List<Hazard> hazards = new ArrayList<>();
     public final List<LoopFlash> flashes = new ArrayList<>();
 
+    // Boss captures
+    private int stage;
+    private float stageFloor, shieldTimer, shieldBlockFx;
+    public final List<Lane> lanes = new ArrayList<>();
+    public final List<Wave> waves = new ArrayList<>();
+    public final List<Beam> beams = new ArrayList<>();
+    public final List<Orbiter> orbiters = new ArrayList<>();
+    private final List<Pending> pending = new ArrayList<>();
+    private float orbitTimer, orbitAngle;
+    private float darkTimer, barrierTimer, windTimer, windX, windY;
+    /** Where the Pokémon was over the last two seconds, for Celebi's rewind: x, y pairs every 0.1 s. */
+    private final float[] history = new float[40];
+    private int historyHead, historySize;
+    private float historyTimer;
+    public float rewindFx = -1, rewindFromX, rewindFromY;
+
     public CaptureGame(String type, String secondaryType, int catchRate, int level, int energy, int maxEnergy,
                        float lineLength, float loopPower, float sizeHint, long seed, Listener listener) {
+        this(type, secondaryType, catchRate, level, energy, maxEnergy, lineLength, loopPower, sizeHint, seed, listener,
+                0, List.of(List.of()));
+    }
+
+    /**
+     * {@code bossKind} is 1 for an Alpha and 2 for a legendary; {@code stageAttacks} names the attacks of each stage
+     * (see {@link AttackStyle}), with an empty list meaning the Pokémon's type attacks.
+     */
+    public CaptureGame(String type, String secondaryType, int catchRate, int level, int energy, int maxEnergy,
+                       float lineLength, float loopPower, float sizeHint, long seed, Listener listener, int bossKind,
+                       List<List<String>> stageAttacks) {
         this.random = new Random(seed);
+        this.bossKind = bossKind;
+        this.stages = Math.max(1, stageAttacks.size());
+        for (List<String> names : stageAttacks) {
+            List<AttackStyle> styles = new ArrayList<>();
+            for (String name : names) {
+                AttackStyle style = AttackStyle.byName(name);
+                if (style != null) {
+                    styles.add(style);
+                }
+            }
+            this.stageAttacks.add(styles);
+        }
+        if (this.stageAttacks.isEmpty()) {
+            this.stageAttacks.add(List.of());
+        }
         this.defenderTypes = secondaryType == null || secondaryType.isEmpty()
                 ? new String[]{type} : new String[]{type, secondaryType};
         this.listener = listener;
@@ -309,10 +558,13 @@ public final class CaptureGame {
         this.lineLength = lineLength;
         float catchFactor = clamp(catchRate, 1, 255) / 255f;
         float levelFactor = clamp(level, 1, 100) / 100f;
-        this.difficulty = clamp((1 - catchFactor) * 0.7f + levelFactor * 0.3f, 0, 1);
-        this.speed = 22f + 38f * difficulty;
-        this.gainPerLoop = CaptureMath.gainPerLoop(catchRate, level, loopPower);
-        this.radius = clamp(9f + sizeHint * 5f, 10f, 24f);
+        this.baseDifficulty = clamp((1 - catchFactor) * 0.7f + levelFactor * 0.3f, 0, 1);
+        this.difficulty = baseDifficulty;
+        // Alphas are big and quick on their feet.
+        this.bossSpeed = bossKind == 1 ? 1.1f : 1f;
+        this.speed = (22f + 38f * difficulty) * bossSpeed;
+        this.gainPerLoop = CaptureMath.gainPerLoop(catchRate, level, loopPower, stages);
+        this.radius = bossKind == 1 ? clamp((9f + sizeHint * 5f) * 1.2f, 12f, 28f) : clamp(9f + sizeHint * 5f, 10f, 24f);
         this.signatureAttack = attackFor(type);
         this.wanderAngle = random.nextFloat() * (float) (Math.PI * 2);
         this.attackCooldown = nextCooldown() * 0.6f;
@@ -412,7 +664,12 @@ public final class CaptureGame {
     }
 
     public boolean isDashing() {
-        return dashTimer > 0;
+        return dashTimer > 0 || orbitTimer > 0;
+    }
+
+    /** Latios and Latias's high-speed laps round the arena. */
+    public boolean isOrbiting() {
+        return orbitTimer > 0;
     }
 
     public boolean isInvulnerable() {
@@ -496,6 +753,65 @@ public final class CaptureGame {
         return false;
     }
 
+    /** The stage the capture is in, from 0. */
+    public int stage() {
+        return stage;
+    }
+
+    /** Gauge share where stage {@code k} (from 0) begins. */
+    public float stageMark(int k) {
+        return k / (float) stages;
+    }
+
+    public boolean isBoss() {
+        return bossKind > 0;
+    }
+
+    /** Right after a new stage starts, loops don't count. */
+    public boolean isShielded() {
+        return shieldTimer > 0;
+    }
+
+    public float shieldTime() {
+        return shieldTimer;
+    }
+
+    /** 1 just after a loop bounced off the shield, fading to 0. */
+    public float shieldBlockFx() {
+        return shieldBlockFx;
+    }
+
+    /** How dark the arena is from Darkrai's attack, 0 to 1. */
+    public float darkness() {
+        return darkTimer <= 0 ? 0 : clamp(Math.min(darkTimer, DARK_TIME - darkTimer) / 0.4f, 0, 1);
+    }
+
+    /** Mewtwo's barrier radius around the Pokémon, or 0 when there is none. */
+    public float barrierRadius() {
+        return barrierTimer > 0 ? radius + 30f : 0;
+    }
+
+    /** The barrier only breaks lines after it has formed. */
+    public boolean isBarrierUp() {
+        return barrierTimer > 0 && barrierTimer < BARRIER_TIME - BARRIER_WARMUP;
+    }
+
+    public float barrierFade() {
+        return barrierTimer <= 0 ? 0 : clamp(Math.min(BARRIER_TIME - barrierTimer, barrierTimer) / BARRIER_WARMUP, 0, 1);
+    }
+
+    public boolean isWindy() {
+        return windTimer > 0;
+    }
+
+    public float windX() {
+        return windX;
+    }
+
+    public float windY() {
+        return windY;
+    }
+
     public int energyGained() {
         return Math.max(0, -damageTaken);
     }
@@ -524,6 +840,7 @@ public final class CaptureGame {
             case FIRE_RING -> {
                 windupTimer = 0;
                 dashTimer = 0;
+                orbitTimer = 0;
                 vx *= 0.2f;
                 vy *= 0.2f;
                 zones.add(new Zone(ZoneKind.FIRE_RING, x, y, radius + 30f, 6f * s, null, null));
@@ -548,6 +865,7 @@ public final class CaptureGame {
             case SPOOK -> {
                 spookTimer = Math.max(spookTimer, 6f * s);
                 windupTimer = 0;
+                orbitTimer = 0;
                 float margin = radius + 6;
                 spookX = x < WIDTH / 2 ? WIDTH - margin : margin;
                 spookY = y < HEIGHT / 2 ? HEIGHT - margin : margin;
@@ -559,6 +877,7 @@ public final class CaptureGame {
                 // An assist alone never finishes a capture; the last loop is always the player's.
                 gauge = Math.max(gauge, Math.min(ASSIST_GAUGE_CAP, gauge + 0.25f * s));
                 sinceLastLoop = 0;
+                checkStage();
             }
             case IRON_LINE -> ironTimer = Math.max(ironTimer, 6f * s);
             case COUNTER -> {
@@ -592,8 +911,90 @@ public final class CaptureGame {
         projectiles.clear();
         shockwaves.clear();
         hazards.clear();
+        lanes.clear();
+        waves.clear();
+        beams.clear();
+        orbiters.clear();
+        pending.clear();
         windupTimer = 0;
         dashTimer = 0;
+        orbitTimer = 0;
+        darkTimer = 0;
+        barrierTimer = 0;
+        windTimer = 0;
+    }
+
+    // ------------------------------------------------------------------ boss stages
+
+    /** Moves a boss into its next stage once the gauge passes the stage's mark. */
+    private void checkStage() {
+        while (stage < stages - 1 && gauge >= stageMark(stage + 1) && gauge < 1f) {
+            stage++;
+            stageFloor = stageMark(stage);
+            shieldTimer = SHIELD_TIME;
+            clearAttacks();
+            difficulty = clamp(baseDifficulty + STAGE_DIFFICULTY * stage, 0, 1);
+            speed = (22f + 38f * difficulty) * bossSpeed * (1 + 0.12f * stage);
+            attackCooldown = SHIELD_TIME + 0.3f;
+            startledTimer = 0;
+            listener.onStage(stage, stages);
+        }
+    }
+
+    private AttackStyle pickAttack() {
+        List<AttackStyle> styles = stageAttacks.get(Math.min(stage, stageAttacks.size() - 1));
+        if (!styles.isEmpty()) {
+            List<AttackStyle> usable = new ArrayList<>();
+            for (AttackStyle style : styles) {
+                // Ongoing effects aren't started twice.
+                if ((style == AttackStyle.DARKNESS && darkTimer > 0) || (style == AttackStyle.BARRIER && barrierTimer > 0)
+                        || (style == AttackStyle.GUST && windTimer > 0)) {
+                    continue;
+                }
+                usable.add(style);
+            }
+            if (!usable.isEmpty()) {
+                return usable.get(random.nextInt(usable.size()));
+            }
+            return signatureAttack;
+        }
+        if (isBoss() && stage > 0) {
+            // A boss without a set of its own mixes in a second type attack in later stages.
+            float roll = random.nextFloat();
+            return roll < 0.2f ? AttackStyle.DASH : roll < 0.6f ? signatureAttack : secondaryAttack(signatureAttack);
+        }
+        return random.nextFloat() < 0.25f ? AttackStyle.DASH : signatureAttack;
+    }
+
+    private static AttackStyle secondaryAttack(AttackStyle style) {
+        return switch (style) {
+            case BURST -> AttackStyle.SHOCKWAVE;
+            case DASH -> AttackStyle.ERUPTION;
+            default -> AttackStyle.BURST;
+        };
+    }
+
+    private void recordHistory(float dt) {
+        historyTimer -= dt;
+        if (historyTimer > 0) {
+            return;
+        }
+        historyTimer = 0.1f;
+        history[historyHead * 2] = x;
+        history[historyHead * 2 + 1] = y;
+        historyHead = (historyHead + 1) % (history.length / 2);
+        historySize = Math.min(historySize + 1, history.length / 2);
+    }
+
+    /** Where the Pokémon was about {@code seconds} ago. */
+    private float[] pastPosition(float seconds) {
+        int back = Math.min(historySize, Math.max(1, Math.round(seconds / 0.1f)));
+        if (back == 0) {
+            return new float[]{x, y};
+        }
+        int slots = history.length / 2;
+        int index = ((historyHead - back) % slots + slots) % slots;
+        return new float[]{history[index * 2], history[index * 2 + 1]};
     }
 
     /** 0 for a point drawn just now, 1 for one about to fade. */
@@ -799,6 +1200,12 @@ public final class CaptureGame {
             return;
         }
         boolean enclosed = pointInPolygon(x, y, xs, ys);
+        if (enclosed && shieldTimer > 0) {
+            // A boss shielding itself at the start of a stage: the loop bounces off.
+            enclosed = false;
+            shieldBlockFx = 1f;
+            listener.onShieldBlocked();
+        }
         flashes.add(new LoopFlash(xs, ys, enclosed));
         if (enclosed) {
             loops++;
@@ -810,6 +1217,7 @@ public final class CaptureGame {
             wanderAngle = random.nextFloat() * (float) (Math.PI * 2);
         }
         listener.onLoop(enclosed, loops);
+        checkStage();
         if (gauge >= 1f) {
             setPhase(Phase.CAPTURED);
             line.clear();
@@ -884,10 +1292,15 @@ public final class CaptureGame {
         if (poisonTimer > 0) {
             if (gauge < ASSIST_GAUGE_CAP) {
                 gauge = Math.min(ASSIST_GAUGE_CAP, gauge + 0.02f * dt);
+                checkStage();
             }
         } else if (sinceLastLoop > GAUGE_DECAY_DELAY) {
-            gauge = Math.max(0, gauge - GAUGE_DECAY_RATE * dt);
+            // A boss never loses a stage it has reached.
+            gauge = Math.max(Math.min(gauge, stageFloor), gauge - GAUGE_DECAY_RATE * dt);
         }
+        shieldTimer = Math.max(0, shieldTimer - dt);
+        shieldBlockFx = Math.max(0, shieldBlockFx - dt * 2.5f);
+        recordHistory(dt);
 
         // A Psychic assist slows the Pokémon and its attacks, but not the player.
         float worldDt = slowTimeTimer > 0 ? dt * 0.45f : dt;
@@ -983,7 +1396,19 @@ public final class CaptureGame {
                 bog = Math.min(bog, 0.5f);
             }
         }
-        if (windupTimer > 0 || isHeld()) {
+        if (isHeld()) {
+            orbitTimer = 0;
+        }
+        if (orbitTimer > 0) {
+            // Latios and Latias lap the arena at speed.
+            orbitTimer -= dt;
+            orbitAngle += 2.8f * dt;
+            float tx = WIDTH / 2 + (float) Math.cos(orbitAngle) * (WIDTH / 2 - radius - 24);
+            float ty = HEIGHT / 2 + (float) Math.sin(orbitAngle) * (HEIGHT / 2 - radius - 16);
+            float blend = Math.min(1, dt * 8);
+            vx += ((tx - x) * 6 - vx) * blend;
+            vy += ((ty - y) * 6 - vy) * blend;
+        } else if (windupTimer > 0 || isHeld() || !beams.isEmpty()) {
             vx *= 0.8f;
             vy *= 0.8f;
         } else if (spookTimer > 0) {
@@ -1038,6 +1463,7 @@ public final class CaptureGame {
             vy = -vy * 0.5f;
             wanderAngle += (float) Math.PI;
             dashTimer = 0;
+            orbitTimer = 0;
         }
 
         for (Zone zone : zones) {
@@ -1198,10 +1624,10 @@ public final class CaptureGame {
             if (windupTimer <= 0) {
                 launch(pendingAttack);
             }
-        } else if (dashTimer <= 0 && !isHeld() && spookTimer <= 0 && !isPinned()) {
+        } else if (dashTimer <= 0 && orbitTimer <= 0 && beams.isEmpty() && !isHeld() && spookTimer <= 0 && !isPinned()) {
             attackCooldown -= dt;
             if (attackCooldown <= 0) {
-                pendingAttack = random.nextFloat() < 0.25f ? AttackStyle.DASH : signatureAttack;
+                pendingAttack = pickAttack();
                 windupTimer = WINDUP_TIME;
                 attackCooldown = nextCooldown();
                 listener.onWindup(pendingAttack);
@@ -1236,6 +1662,75 @@ public final class CaptureGame {
                 hazardIt.remove();
             }
         }
+        updateSignatures(dt);
+    }
+
+    private void updateSignatures(float dt) {
+        for (int i = pending.size() - 1; i >= 0; i--) {
+            Pending part = pending.get(i);
+            part.delay -= dt;
+            if (part.delay <= 0) {
+                pending.remove(i);
+                part.action.run();
+            }
+        }
+        lanes.removeIf(lane -> {
+            lane.timer -= dt;
+            return lane.finished();
+        });
+        waves.removeIf(wave -> {
+            if (wave.warning > 0) {
+                wave.warning -= dt;
+            } else {
+                wave.pos += wave.direction * (110f + 40f * difficulty) * dt;
+            }
+            return wave.finished();
+        });
+        beams.removeIf(beam -> {
+            beam.timer -= dt;
+            return -beam.timer > beam.duration;
+        });
+        Zone ring = zone(ZoneKind.FIRE_RING);
+        orbiters.removeIf(orbiter -> {
+            orbiter.life -= dt;
+            orbiter.angle += orbiter.spin * dt;
+            orbiter.distance = Math.min(130f, orbiter.distance + (24f + 14f * difficulty) * dt);
+            float ox = orbiterX(orbiter), oy = orbiterY(orbiter);
+            return orbiter.life <= 0 || hitsWall(ox, oy, 5f) || (ring != null && !ring.contains(ox, oy, 0));
+        });
+        for (Projectile p : projectiles) {
+            if (p.homing > 0 && !line.isEmpty()) {
+                float[] tip = line.get(line.size() - 1);
+                float want = (float) Math.atan2(tip[1] - p.y, tip[0] - p.x);
+                float have = (float) Math.atan2(p.vy, p.vx);
+                float turn = (float) Math.atan2(Math.sin(want - have), Math.cos(want - have));
+                float step = Math.max(-p.homing * dt, Math.min(p.homing * dt, turn));
+                float s = (float) Math.hypot(p.vx, p.vy);
+                p.vx = (float) Math.cos(have + step) * s;
+                p.vy = (float) Math.sin(have + step) * s;
+            }
+        }
+        darkTimer = Math.max(0, darkTimer - dt);
+        barrierTimer = Math.max(0, barrierTimer - dt);
+        if (windTimer > 0) {
+            windTimer -= dt;
+            // The wind pushes the line sideways, which can drag it into attacks.
+            for (float[] point : line) {
+                point[0] = clamp(point[0] + windX * dt, 0, WIDTH);
+                point[1] = clamp(point[1] + windY * dt, 0, HEIGHT);
+            }
+        }
+        if (rewindFx >= 0) {
+            rewindFx = rewindFx + dt > REWIND_FX_TIME ? -1 : rewindFx + dt;
+        }
+    }
+
+    public float orbiterX(Orbiter orbiter) {
+        return x + (float) Math.cos(orbiter.angle) * orbiter.distance;
+    }
+
+    public float orbiterY(Orbiter orbiter) {
+        return y + (float) Math.sin(orbiter.angle) * orbiter.distance;
     }
 
     private boolean hitsWall(float px, float py, float r) {
@@ -1311,7 +1806,178 @@ public final class CaptureGame {
                             0.9f + i * 0.12f));
                 }
             }
+            default -> launchSignature(style, blind);
         }
+    }
+
+    /** The legendary signature attacks. Aimed ones aim at random spots while a Dark assist blinds the Pokémon. */
+    private void launchSignature(AttackStyle style, boolean blind) {
+        listener.onSignature(style);
+        switch (style) {
+            case FISSURE -> {
+                int count = 2 + Math.round(difficulty);
+                for (int i = 0; i < count; i++) {
+                    float[] at = i == 0 && !blind ? aimPoint() : randomPoint();
+                    float angle = random.nextFloat() * (float) Math.PI;
+                    addCrossingLane(LaneKind.FISSURE, at, angle, 12f, 0.9f + i * 0.4f, 0.7f, 0.45f);
+                }
+            }
+            case TIDAL_WAVE -> {
+                boolean alongX = random.nextFloat() < 0.7f;
+                float extent = alongX ? HEIGHT : WIDTH;
+                float gapHalf = 26f - 8f * difficulty;
+                float gap = gapHalf + 6 + random.nextFloat() * (extent - 2 * gapHalf - 12);
+                waves.add(new Wave(alongX, random.nextBoolean() ? 1 : -1, gap, gapHalf, 0.8f));
+            }
+            case DIVE -> {
+                int count = 2 + (difficulty > 0.7f ? 1 : 0);
+                for (int i = 0; i < count; i++) {
+                    float[] at = blind ? randomPoint() : aimPoint();
+                    float angle = random.nextFloat() * (float) Math.PI;
+                    addCrossingLane(LaneKind.DIVE, at, angle, 16f, 0.7f + i * 0.5f, 0.35f, 0.25f);
+                }
+            }
+            case BEAM -> {
+                float[] aim = blind ? randomPoint() : aimPoint();
+                float sweep = (1.3f + 0.5f * difficulty) * (random.nextBoolean() ? 1 : -1);
+                float centre = (float) Math.atan2(aim[1] - y, aim[0] - x);
+                beams.add(new Beam(centre - sweep / 2, sweep, 0.55f, 1.3f));
+            }
+            case MIST_BALLS -> {
+                int count = 4 + Math.round(2 * difficulty);
+                float[] aim = blind ? randomPoint() : aimPoint();
+                float centre = (float) Math.atan2(aim[1] - y, aim[0] - x);
+                for (int i = 0; i < count; i++) {
+                    float angle = centre + (i - (count - 1) / 2f) * 0.45f;
+                    Projectile p = new Projectile(x, y, (float) Math.cos(angle) * 75f, (float) Math.sin(angle) * 75f, 4.5f);
+                    p.homing = blind ? 0 : 1.6f + difficulty;
+                    p.life = 3.5f;
+                    p.style = AttackStyle.MIST_BALLS;
+                    projectiles.add(p);
+                }
+            }
+            case ORBIT_RUSH -> {
+                orbitTimer = 2.2f + difficulty;
+                orbitAngle = (float) Math.atan2((y - HEIGHT / 2) / HEIGHT, (x - WIDTH / 2) / WIDTH);
+            }
+            case REWIND -> {
+                boolean confined = false;
+                for (Zone zone : zones) {
+                    confined |= zone.confines();
+                }
+                if (!confined) {
+                    // Blinks back to where it was, unless an assist holds it in place.
+                    float[] past = pastPosition(1.5f);
+                    rewindFromX = x;
+                    rewindFromY = y;
+                    rewindFx = 0;
+                    x = clamp(past[0], radius + 2, WIDTH - radius - 2);
+                    y = clamp(past[1], radius + 2, HEIGHT - radius - 2);
+                    vx = 0;
+                    vy = 0;
+                }
+                // The newest part of the line is undone, which breaks the loop being drawn without hurting the styler.
+                line.removeIf(point -> clock - point[2] < 0.6f);
+                for (int i = 0; i < 6; i++) {
+                    float angle = (float) (Math.PI * 2 * i / 6) + random.nextFloat() * 0.3f;
+                    float s = 70f + 40f * difficulty;
+                    projectiles.add(new Projectile(x, y, (float) Math.cos(angle) * s, (float) Math.sin(angle) * s, 4f));
+                }
+            }
+            case AURORA -> {
+                float[] at = blind ? randomPoint() : aimPoint();
+                float angle = random.nextInt(4) * (float) (Math.PI / 4);
+                addCrossingLane(LaneKind.AURORA, at, angle, 10f, 0.9f, 0f, 2.6f + difficulty);
+            }
+            case PILLARS -> {
+                int count = 3 + Math.round(2 * difficulty);
+                for (int i = 0; i < count; i++) {
+                    pending.add(new Pending(i * 0.32f, () -> {
+                        float[] at = blindTimer > 0 || line.isEmpty() ? randomPoint() : line.get(line.size() - 1);
+                        hazards.add(new Hazard(clamp(at[0], 0, WIDTH), clamp(at[1], 0, HEIGHT), 14f, 0.55f,
+                                AttackStyle.PILLARS));
+                    }));
+                }
+            }
+            case CHAIN -> {
+                float[] centre = blind ? randomPoint() : aimPoint();
+                float size = 50f + 25f * difficulty;
+                float turn = random.nextFloat() * (float) (Math.PI * 2);
+                float[][] corners = new float[3][];
+                for (int i = 0; i < 3; i++) {
+                    float angle = turn + (float) (Math.PI * 2 * i / 3);
+                    corners[i] = new float[]{clamp(centre[0] + (float) Math.cos(angle) * size, 8, WIDTH - 8),
+                            clamp(centre[1] + (float) Math.sin(angle) * size, 8, HEIGHT - 8)};
+                }
+                for (int i = 0; i < 3; i++) {
+                    float[] a = corners[i], b = corners[(i + 1) % 3];
+                    lanes.add(new Lane(LaneKind.CHAIN, a[0], a[1], b[0], b[1], 6f, 0.8f, 0f, 1.5f));
+                }
+            }
+            case CRESCENTS -> {
+                int count = 3 + Math.round(2 * difficulty);
+                float spin = random.nextBoolean() ? 2.1f : -2.1f;
+                for (int i = 0; i < count; i++) {
+                    orbiters.add(new Orbiter((float) (Math.PI * 2 * i / count), radius + 8, spin));
+                }
+            }
+            case DARKNESS -> darkTimer = DARK_TIME;
+            case BARRIER -> barrierTimer = BARRIER_TIME;
+            case GUST -> {
+                windTimer = WIND_TIME;
+                float angle = random.nextFloat() * (float) (Math.PI * 2);
+                float strength = 34f + 20f * difficulty;
+                windX = (float) Math.cos(angle) * strength;
+                windY = (float) Math.sin(angle) * strength;
+            }
+            case RAIN -> {
+                int waves = 3;
+                for (int w = 0; w < waves; w++) {
+                    pending.add(new Pending(w * 0.5f, () -> {
+                        int drops = 4 + Math.round(2 * difficulty);
+                        for (int i = 0; i < drops; i++) {
+                            float[] at;
+                            if (blindTimer <= 0 && !line.isEmpty() && random.nextFloat() < 0.5f) {
+                                float[] p = line.get(random.nextInt(line.size()));
+                                at = new float[]{p[0] + (random.nextFloat() - 0.5f) * 50f, p[1] + (random.nextFloat() - 0.5f) * 50f};
+                            } else {
+                                at = randomPoint();
+                            }
+                            hazards.add(new Hazard(clamp(at[0], 0, WIDTH), clamp(at[1], 0, HEIGHT), 11f,
+                                    0.6f + random.nextFloat() * 0.2f, AttackStyle.RAIN));
+                        }
+                    }));
+                }
+            }
+            default -> {
+            }
+        }
+    }
+
+    /** A lane through {@code at} at {@code angle}, running edge to edge across the arena. */
+    private void addCrossingLane(LaneKind kind, float[] at, float angle, float width, float warning, float travel,
+                                 float active) {
+        float dx = (float) Math.cos(angle), dy = (float) Math.sin(angle);
+        float reach = WIDTH + HEIGHT;
+        // Clip the long line to the arena so the front travels across what the player can see.
+        float t0 = -reach, t1 = reach;
+        if (Math.abs(dx) > 1e-4f) {
+            float a = (0 - at[0]) / dx, b = (WIDTH - at[0]) / dx;
+            t0 = Math.max(t0, Math.min(a, b));
+            t1 = Math.min(t1, Math.max(a, b));
+        }
+        if (Math.abs(dy) > 1e-4f) {
+            float a = (0 - at[1]) / dy, b = (HEIGHT - at[1]) / dy;
+            t0 = Math.max(t0, Math.min(a, b));
+            t1 = Math.min(t1, Math.max(a, b));
+        }
+        if (random.nextBoolean()) {
+            float swap = t0;
+            t0 = t1;
+            t1 = swap;
+        }
+        lanes.add(new Lane(kind, at[0] + dx * t0, at[1] + dy * t0, at[0] + dx * t1, at[1] + dy * t1, width, warning,
+                travel, active));
     }
 
     private float[] randomPoint() {
@@ -1332,7 +1998,7 @@ public final class CaptureGame {
         boolean iron = ironTimer > 0;
         // The Pokémon's own body breaks the line; harder when it is charging.
         if (!isHeld() && !iron && distanceToLine(x, y) < radius * 0.7f) {
-            breakLine(dashTimer > 0 ? 3 + level / 25 : 1 + level / 40);
+            breakLine(isDashing() ? 3 + level / 25 : 1 + level / 40);
             return;
         }
         for (Projectile p : projectiles) {
@@ -1360,7 +2026,20 @@ public final class CaptureGame {
                 }
             }
         }
+        for (Orbiter orbiter : orbiters) {
+            if (distanceToLine(orbiterX(orbiter), orbiterY(orbiter)) < 6f) {
+                orbiter.life = 0;
+                if (!iron) {
+                    breakLine(3 + level / 30);
+                    return;
+                }
+            }
+        }
         if (iron) {
+            return;
+        }
+        if (signatureHit()) {
+            breakLine(3 + level / 30);
             return;
         }
         for (Hazard hazard : hazards) {
@@ -1369,6 +2048,57 @@ public final class CaptureGame {
                 return;
             }
         }
+    }
+
+    /** Whether a live lane, wave, beam or barrier touches the line. */
+    private boolean signatureHit() {
+        float barrier = isBarrierUp() ? barrierRadius() : 0;
+        for (float[] point : line) {
+            float px = point[0], py = point[1];
+            if (barrier > 0 && Math.hypot(px - x, py - y) < barrier) {
+                return true;
+            }
+            for (Lane lane : lanes) {
+                if (!lane.live()) {
+                    continue;
+                }
+                float dx = lane.bx - lane.ax, dy = lane.by - lane.ay;
+                float lenSq = dx * dx + dy * dy;
+                if (lenSq < 1) {
+                    continue;
+                }
+                float t = ((px - lane.ax) * dx + (py - lane.ay) * dy) / lenSq;
+                if (t < lane.tail() || t > lane.front()) {
+                    continue;
+                }
+                float cx = lane.ax + dx * t, cy = lane.ay + dy * t;
+                if (Math.hypot(px - cx, py - cy) < lane.width / 2 + 1) {
+                    return true;
+                }
+            }
+            for (Wave wave : waves) {
+                if (wave.hits(px, py)) {
+                    return true;
+                }
+            }
+            for (Beam beam : beams) {
+                if (!beam.live()) {
+                    continue;
+                }
+                float dx = px - x, dy = py - y;
+                float dist = (float) Math.hypot(dx, dy);
+                if (dist < radius) {
+                    continue;
+                }
+                float angle = beam.angle();
+                float along = dx * (float) Math.cos(angle) + dy * (float) Math.sin(angle);
+                float across = -dx * (float) Math.sin(angle) + dy * (float) Math.cos(angle);
+                if (along > 0 && Math.abs(across) < 6f) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private void breakLine(int damage) {
@@ -1386,7 +2116,9 @@ public final class CaptureGame {
         strokeBroken = true;
         invulnerable = HIT_INVULNERABILITY;
         hitFlash = 0.35f;
-        gauge *= 0.85f;
+        gauge = Math.max(Math.min(gauge, stageFloor), gauge * 0.85f);
+        // Bosses hit harder in later stages.
+        damage += isBoss() ? stage : 0;
         int dealt = Math.min(damage, energy);
         energy -= dealt;
         damageTaken += dealt;

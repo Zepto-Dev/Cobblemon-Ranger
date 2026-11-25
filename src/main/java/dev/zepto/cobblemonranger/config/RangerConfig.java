@@ -13,6 +13,7 @@ public final class RangerConfig {
     public static final ModConfigSpec.IntValue PARTNER_FIELD_MOVE_COOLDOWN_SECONDS;
     public static final ModConfigSpec.IntValue HQ_CHARGE_COOLDOWN_MINUTES;
     public static final ModConfigSpec.IntValue STYLER_RECHARGE_SECONDS;
+    public static final ModConfigSpec.BooleanValue BOSS_CAPTURES;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -48,6 +49,10 @@ public final class RangerConfig {
                 .comment("Seconds for a carried styler to recharge 1 energy on its own. 8 seconds refills a fresh",
                         "30-energy styler in 4 minutes.")
                 .defineInRange("stylerRechargeSeconds", 8, 1, 600);
+        BOSS_CAPTURES = builder
+                .comment("Alphas and legendaries fight back in stages during a styler capture (2 stages for Alphas, 3",
+                        "for legendaries, with each legendary's own attacks). Off makes them normal captures.")
+                .define("bossCaptures", true);
         SPEC = builder.build();
     }
 

@@ -10,6 +10,7 @@ import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import dev.zepto.cobblemonranger.CobblemonRanger;
 import dev.zepto.cobblemonranger.browser.BrowserManager;
+import dev.zepto.cobblemonranger.browser.GuidePage;
 import dev.zepto.cobblemonranger.item.StylerItem;
 import dev.zepto.cobblemonranger.item.StylerProgress;
 import dev.zepto.cobblemonranger.mission.MissionManager;
@@ -18,6 +19,7 @@ import dev.zepto.cobblemonranger.network.LoopPayload;
 import dev.zepto.cobblemonranger.network.OpenCapturePayload;
 import dev.zepto.cobblemonranger.network.UseAssistPayload;
 import dev.zepto.cobblemonranger.signs.SignManager;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -73,7 +75,8 @@ public final class CaptureManager {
     private static final Map<UUID, Session> SESSIONS = new HashMap<>();
 
     private record Session(UUID entityUuid, int entityId, InteractionHand hand, long startTick, ServerLevel level,
-                           boolean wasNoAi, Set<UUID> assistsUsed, AssistLog log, float gainPerLoop) {
+                           boolean wasNoAi, Set<UUID> assistsUsed, AssistLog log, float gainPerLoop,
+                           BossCapture.Kind boss) {
     }
 
     /** What the assists in a capture did, to check the client's result against. */
@@ -202,12 +205,16 @@ public final class CaptureManager {
         }
 
         ServerLevel level = player.serverLevel();
+        BossCapture.Boss boss = BossCapture.of(pokemon);
+        if (boss.isBoss()) {
+            BrowserManager.unlock(player, GuidePage.BOSSES);
+        }
         Pokemon partner = PartnerManager.getPartner(player);
         int partnerCharge = partner == null ? 0 : PartnerManager.charge(player, partner);
         SESSIONS.put(player.getUUID(), new Session(entity.getUUID(), entity.getId(), hand, level.getGameTime(), level,
                 entity.isNoAi(), new HashSet<>(), new AssistLog(partner == null ? null : partner.getUuid(), partnerCharge),
                 CaptureMath.gainPerLoop(pokemon.getSpecies().getCatchRate(), pokemon.getLevel(),
-                        StylerItem.loopPower(styler))));
+                        StylerItem.loopPower(styler), boss.stageCount()), boss.kind()));
         // Through Mob: Cobblemon 1.7 dropped the PokemonNavigation override, so a direct call breaks the 1.6.1-built jar.
         ((Mob) entity).getNavigation().stop();
         entity.setNoAi(true);
@@ -239,7 +246,9 @@ public final class CaptureManager {
                 assists,
                 PARTNER_ASSIST_STRENGTH,
                 partnerCharge,
-                PartnerCharge.FULL));
+                PartnerCharge.FULL,
+                boss.kind().ordinal(),
+                boss.stages()));
     }
 
     /** Stylers can only capture Pok\u00e9mon up to a level that rises with the styler's own level. */
@@ -364,13 +373,13 @@ public final class CaptureManager {
                     }
                 } else if (target instanceof PokemonEntity entity && elapsed >= MIN_CAPTURE_TICKS
                         && StylerItem.getEnergy(styler) > 0) {
-                    capture(player, entity, styler);
+                    capture(player, entity, styler, session.boss());
                 }
             }
         }
     }
 
-    private static void capture(ServerPlayer player, PokemonEntity entity, ItemStack styler) {
+    private static void capture(ServerPlayer player, PokemonEntity entity, ItemStack styler, BossCapture.Kind boss) {
         Pokemon pokemon = entity.getPokemon();
         if (!entity.isAlive() || !pokemon.isWild() || entity.isBattling()
                 || entity.level() != player.level() || entity.distanceToSqr(player) > MAX_DISTANCE_SQR) {
@@ -405,6 +414,27 @@ public final class CaptureManager {
 
         int catchRate = pokemon.getSpecies().getCatchRate();
         int xp = 10 + Math.max(0, 255 - catchRate) / 8 + pokemon.getLevel() / 3;
+        switch (boss) {
+            case ALPHA -> {
+                xp *= 2;
+                // Befriending an Alpha earns what beating it in battle would. The friend goes home after one battle
+                // and released friends never come back, so each Alpha pays out once.
+                for (ItemStack loot : BossCapture.alphaLoot(player, pokemon)) {
+                    if (!player.getInventory().add(loot)) {
+                        player.drop(loot, false);
+                    }
+                }
+                player.displayClientMessage(Component.translatable("message.cobblemonranger.boss_alpha", name)
+                        .withStyle(ChatFormatting.GOLD), false);
+            }
+            case LEGENDARY -> {
+                xp = xp * 3 + 60;
+                player.displayClientMessage(Component.translatable("message.cobblemonranger.boss_legendary", name)
+                        .withStyle(ChatFormatting.GOLD), false);
+            }
+            case NONE -> {
+            }
+        }
         StylerItem.addXp(player, styler, xp);
         PartnerManager.rewardPartner(player, 2);
         MissionManager.onCapture(player, pokemon);

@@ -1,0 +1,20 @@
+{
+  "species": [
+    "cobblemon:celebi"
+  ],
+  "stages": [
+    [
+      "burst",
+      "shockwave"
+    ],
+    [
+      "rewind",
+      "burst"
+    ],
+    [
+      "rewind",
+      "shockwave",
+      "burst"
+    ]
+  ]
+}

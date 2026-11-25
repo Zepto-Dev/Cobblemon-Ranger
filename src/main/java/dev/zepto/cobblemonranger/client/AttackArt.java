@@ -17,6 +17,10 @@ import java.util.Locale;
 public record AttackArt(Element missile, Element particle, Blast blast, int color, Element dust, int dustTint) {
     public static final ResourceLocation ATTACKS = CobblemonRanger.id("textures/gui/capture/attacks.png");
     public static final ResourceLocation BLASTS = CobblemonRanger.id("textures/gui/capture/blasts.png");
+    /** The legendary signature attacks' own sprites (tools/signature_textures.py). */
+    public static final ResourceLocation SIGNATURES = CobblemonRanger.id("textures/gui/capture/signatures.png");
+    static final int SIGNATURE_MIST_BALL = 0, SIGNATURE_BURST = 1;
+    private static final int SIGNATURES_WIDTH = 32;
     static final int CELL = 16, BLAST_CELL = 32;
     private static final int ATTACKS_WIDTH = 8 * CELL, ATTACKS_HEIGHT = 23 * CELL;
     private static final int BLASTS_WIDTH = 6 * BLAST_CELL, BLASTS_HEIGHT = 8 * BLAST_CELL;
@@ -124,6 +128,12 @@ public record AttackArt(Element missile, Element particle, Blast blast, int colo
     static void blast(GuiGraphics graphics, Blast blast, int column, float x, float y, float size, int tint, float alpha) {
         draw(graphics, BLASTS, BLASTS_WIDTH, BLASTS_HEIGHT, BLAST_CELL, column, blast.ordinal(), x, y, size, 0, tint,
                 alpha);
+    }
+
+    /** One cell of the signature attacks' sheet centred on (x, y). */
+    static void signature(GuiGraphics graphics, int column, float x, float y, float size, float angle, int tint,
+                          float alpha) {
+        draw(graphics, SIGNATURES, SIGNATURES_WIDTH, CELL, CELL, column, 0, x, y, size, angle, tint, alpha);
     }
 
     static void draw(GuiGraphics graphics, ResourceLocation texture, int textureWidth, int textureHeight,

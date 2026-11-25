@@ -1,0 +1,21 @@
+{
+  "species": [
+    "cobblemon:latios",
+    "cobblemon:latias"
+  ],
+  "stages": [
+    [
+      "mist_balls",
+      "dash"
+    ],
+    [
+      "orbit_rush",
+      "mist_balls"
+    ],
+    [
+      "orbit_rush",
+      "mist_balls",
+      "mist_balls"
+    ]
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "species": [
+    "cobblemon:lugia"
+  ],
+  "stages": [
+    [
+      "burst",
+      "dash"
+    ],
+    [
+      "beam",
+      "gust",
+      "burst"
+    ],
+    [
+      "beam",
+      "gust",
+      "beam"
+    ]
+  ]
+}

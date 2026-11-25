@@ -25,13 +25,21 @@ public final class CaptureMusic {
 
     /** Starts the capture theme. Returns false when music is turned off in the client config. */
     public static boolean start() {
+        return start(false);
+    }
+
+    /**
+     * Starts the capture theme; a boss capture plays it a little faster and higher, which lifts it into a more urgent
+     * key. Returns false when music is turned off in the client config.
+     */
+    public static boolean start(boolean boss) {
         stop(0.2f);
         if (!RangerClientConfig.musicEnabled()) {
             return false;
         }
         Minecraft minecraft = Minecraft.getInstance();
         minecraft.getMusicManager().stopPlaying();
-        loop = new Loop(ModSounds.CAPTURE_MUSIC.get(), RangerClientConfig.musicVolume());
+        loop = new Loop(ModSounds.CAPTURE_MUSIC.get(), RangerClientConfig.musicVolume(), boss ? 1.12f : 1f);
         minecraft.getSoundManager().play(loop);
         return true;
     }
@@ -61,8 +69,9 @@ public final class CaptureMusic {
         private float fadeStep;
         private int age;
 
-        Loop(SoundEvent event, float volume) {
+        Loop(SoundEvent event, float volume, float pitch) {
             super(event, SoundSource.MUSIC, RandomSource.create());
+            this.pitch = pitch;
             this.fullVolume = volume;
             this.volume = volume;
             this.looping = true;

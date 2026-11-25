@@ -12,6 +12,7 @@ public enum GuidePage {
     BROWSER("browser", true),
     FRIENDS("friends", false),
     ASSISTS("assists", false),
+    BOSSES("bosses", false),
     PARTNER("partner", false),
     FIELD_MOVES("field_moves", false),
     MISSIONS("missions", false),

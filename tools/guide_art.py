@@ -263,6 +263,29 @@ def page_field_moves():
     return img
 
 
+def page_field_move_picker():
+    """The move picker: field move icons (from tools/field_move_art.py) in a ring around the crosshair."""
+    img, d = canvas(rgb(0x6DB34F))
+    d.rectangle([0, 0, W - 1, 30], fill=rgb(0x8FD3F5))
+    atlas = Image.open("src/main/resources/assets/cobblemonranger/textures/gui/field_moves.png").convert("RGBA")
+    order = ["headbutt", "burn", "surf", "cut", "flash", "freeze", "rock_smash", "decompose", "dig", "tailwind",
+             "telekinesis", "string_shot", "stone_edge", "spook", "outrage", "snatch", "magnet", "charm"]
+    cx, cy = W // 2, H // 2 + 1
+    shown = ["flash", "tailwind", "charm", "string_shot", "magnet", "spook"]
+    for i, name in enumerate(shown):
+        a = -math.pi / 2 + i * 2 * math.pi / len(shown)
+        x = int(round(cx + 30 * math.cos(a))) - 10
+        y = int(round(cy + 17 * math.sin(a))) - 10
+        k = order.index(name)
+        tile = atlas.crop(((k % 6) * 20, (k // 6) * 20, (k % 6) * 20 + 20, (k // 6) * 20 + 20))
+        if i == 0:
+            d.rectangle([x - 1, y - 1, x + 20, y + 20], outline=GOLD)
+        img.alpha_composite(tile, (x, y))
+    d.line([cx - 2, cy, cx + 2, cy], fill=WHITE)
+    d.line([cx, cy - 2, cx, cy + 2], fill=WHITE)
+    return img
+
+
 def page_missions():
     img, d = canvas()
     # The HQ terminal.
@@ -313,7 +336,8 @@ def page_signs():
 
 PAGES = {
     "styler": page_styler, "capturing": page_capturing, "browser": page_browser, "friends": page_friends,
-    "assists": page_assists, "bosses": page_bosses, "partner": page_partner, "field_moves": page_field_moves, "missions": page_missions,
+    "assists": page_assists, "bosses": page_bosses, "partner": page_partner, "field_moves": page_field_moves,
+    "field_move_picker": page_field_move_picker, "missions": page_missions,
     "upgrades": page_upgrades, "signs": page_signs,
 }
 

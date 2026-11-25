@@ -12,6 +12,7 @@ import dev.zepto.cobblemonranger.capture.PartnerCharge;
 import dev.zepto.cobblemonranger.config.RangerConfig;
 import dev.zepto.cobblemonranger.field.FieldMoveManager;
 import dev.zepto.cobblemonranger.network.GuideReadPayload;
+import dev.zepto.cobblemonranger.network.ReleaseFriendsPayload;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -178,6 +179,7 @@ public class RangerBrowserScreen extends Screen {
                 false);
         drawTab(graphics, Tab.GUIDE, Component.translatable("screen.cobblemonranger.guide.tab"), mouseX, mouseY,
                 ClientBrowserData.hasNewPages());
+        drawReleaseButton(graphics, mouseX, mouseY);
         if (tab == Tab.BROWSER) {
             renderBrowser(graphics, mouseX, mouseY, partialTick);
         } else {
@@ -195,6 +197,29 @@ public class RangerBrowserScreen extends Screen {
         if (badge) {
             graphics.fill(x + 68, y + 2, x + 72, y + 6, GOLD);
         }
+    }
+
+    private int releaseWidth() {
+        return font.width(Component.translatable("screen.cobblemonranger.browser.release")) + 12;
+    }
+
+    private int releaseX() {
+        return left + panelWidth - 6 - releaseWidth();
+    }
+
+    private boolean overRelease(double mouseX, double mouseY) {
+        return mouseX >= releaseX() && mouseX < releaseX() + releaseWidth() && mouseY >= top + 4
+                && mouseY < top + 4 + TAB_HEIGHT;
+    }
+
+    /** Sends every friend Pokémon home (this used to be sneak + right-click, which now opens the move picker). */
+    private void drawReleaseButton(GuiGraphics graphics, int mouseX, int mouseY) {
+        int x = releaseX();
+        int y = top + 4;
+        boolean hover = overRelease(mouseX, mouseY);
+        graphics.fill(x, y, x + releaseWidth(), y + TAB_HEIGHT, hover ? RangerStyle.ACCENT : RangerStyle.ACCENT_DARK);
+        graphics.drawCenteredString(font, Component.translatable("screen.cobblemonranger.browser.release"),
+                x + releaseWidth() / 2, y + 4, hover ? 0xFF101820 : 0xFFFFFFFF);
     }
 
     private void renderBrowser(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
@@ -435,6 +460,8 @@ public class RangerBrowserScreen extends Screen {
             case BOSSES -> new Object[]{BossCapture.ALPHA_STAGES, BossCapture.LEGENDARY_STAGES};
             case PARTNER -> new Object[]{FieldMoveManager.PARTNER_ENERGY_COST,
                     RangerConfig.current(RangerConfig.PARTNER_FIELD_MOVE_COOLDOWN_SECONDS)};
+            case FIELD_MOVES -> new Object[]{FieldMoveManager.TELEKINESIS_RANGE};
+            case FIELD_MOVE_PICKER -> new Object[]{FieldMoveManager.MAX_CHARMED};
             case MISSIONS -> new Object[]{RangerConfig.current(RangerConfig.MISSION_COOLDOWN_MINUTES)};
             case SIGNS -> new Object[]{RangerConfig.current(RangerConfig.WORLD_SIGN_PERSONAL_COOLDOWN_MINUTES),
                     RangerConfig.current(RangerConfig.WORLD_SIGN_SHARED_COOLDOWN_MINUTES)};
@@ -447,6 +474,12 @@ public class RangerBrowserScreen extends Screen {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (button == 0) {
+            if (overRelease(mouseX, mouseY)) {
+                PacketDistributor.sendToServer(ReleaseFriendsPayload.INSTANCE);
+                minecraft.getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(
+                        net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK, 1f));
+                return true;
+            }
             for (Tab t : Tab.values()) {
                 int x = tabX(t);
                 if (mouseX >= x && mouseX < x + 74 && mouseY >= top + 4 && mouseY < top + 4 + TAB_HEIGHT) {

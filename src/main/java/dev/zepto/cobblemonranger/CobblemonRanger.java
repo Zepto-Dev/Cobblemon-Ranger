@@ -7,6 +7,7 @@ import dev.zepto.cobblemonranger.capture.PartnerManager;
 import dev.zepto.cobblemonranger.capture.RangerCommands;
 import dev.zepto.cobblemonranger.config.RangerClientConfig;
 import dev.zepto.cobblemonranger.config.RangerConfig;
+import dev.zepto.cobblemonranger.field.FieldMoveManager;
 import dev.zepto.cobblemonranger.field.SurfHandler;
 import dev.zepto.cobblemonranger.hq.RangerHq;
 import dev.zepto.cobblemonranger.mission.MissionManager;
@@ -68,6 +69,7 @@ public final class CobblemonRanger {
         NeoForge.EVENT_BUS.register(MissionManager.class);
         NeoForge.EVENT_BUS.register(SignManager.class);
         NeoForge.EVENT_BUS.register(SurfHandler.class);
+        NeoForge.EVENT_BUS.register(FieldMoveManager.class);
         NeoForge.EVENT_BUS.register(RangerHq.class);
         NeoForge.EVENT_BUS.addListener(RangerCommands::register);
     }

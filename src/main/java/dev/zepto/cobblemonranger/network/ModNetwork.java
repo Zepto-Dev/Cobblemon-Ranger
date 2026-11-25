@@ -2,7 +2,9 @@ package dev.zepto.cobblemonranger.network;
 
 import dev.zepto.cobblemonranger.browser.BrowserManager;
 import dev.zepto.cobblemonranger.capture.CaptureManager;
+import dev.zepto.cobblemonranger.capture.FriendManager;
 import dev.zepto.cobblemonranger.client.ClientPayloads;
+import dev.zepto.cobblemonranger.field.FieldMoveManager;
 import dev.zepto.cobblemonranger.signs.SignManager;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
@@ -13,7 +15,7 @@ public final class ModNetwork {
     }
 
     public static void register(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar("4");
+        PayloadRegistrar registrar = event.registrar("5");
         // Client handlers are only referenced inside lambda bodies, so dedicated servers never load client classes.
         registrar.playToClient(OpenCapturePayload.TYPE, OpenCapturePayload.STREAM_CODEC,
                 (payload, context) -> ClientPayloads.openCapture(payload));
@@ -21,6 +23,12 @@ public final class ModNetwork {
                 (payload, context) -> ClientPayloads.rangerSync(payload));
         registrar.playToClient(BrowserSyncPayload.TYPE, BrowserSyncPayload.STREAM_CODEC,
                 (payload, context) -> ClientPayloads.browserSync(payload));
+        registrar.playToClient(OpenFieldMovePickerPayload.TYPE, OpenFieldMovePickerPayload.STREAM_CODEC,
+                (payload, context) -> ClientPayloads.openFieldMovePicker(payload));
+        registrar.playToServer(UseFieldMovePayload.TYPE, UseFieldMovePayload.STREAM_CODEC,
+                (payload, context) -> FieldMoveManager.pick((ServerPlayer) context.player(), payload.move()));
+        registrar.playToServer(ReleaseFriendsPayload.TYPE, ReleaseFriendsPayload.STREAM_CODEC,
+                (payload, context) -> FriendManager.releaseAllFromBrowser((ServerPlayer) context.player()));
         registrar.playToServer(GuideReadPayload.TYPE, GuideReadPayload.STREAM_CODEC,
                 (payload, context) -> BrowserManager.markRead((ServerPlayer) context.player(), payload.page()));
         registrar.playToServer(CaptureResultPayload.TYPE, CaptureResultPayload.STREAM_CODEC,

@@ -56,7 +56,8 @@ public final class BrowserManager {
         BrowserData.Entry entry = new BrowserData.Entry(old == null ? 1 : old.count() + 1,
                 alpha || old != null && old.alpha());
         BrowserData after = before.withSpecies(key, entry);
-        for (GuidePage page : new GuidePage[]{GuidePage.FRIENDS, GuidePage.ASSISTS, GuidePage.FIELD_MOVES}) {
+        for (GuidePage page : new GuidePage[]{GuidePage.FRIENDS, GuidePage.ASSISTS, GuidePage.FIELD_MOVES,
+                GuidePage.FIELD_MOVE_PICKER}) {
             after = after.withUnlocked(page);
         }
         player.setData(ModAttachments.BROWSER, after);

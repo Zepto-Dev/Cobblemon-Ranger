@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "cobblemonranger:block/silk_ladder" },
+    "facing=east": { "model": "cobblemonranger:block/silk_ladder", "y": 90 },
+    "facing=south": { "model": "cobblemonranger:block/silk_ladder", "y": 180 },
+    "facing=west": { "model": "cobblemonranger:block/silk_ladder", "y": 270 }
+  }
+}

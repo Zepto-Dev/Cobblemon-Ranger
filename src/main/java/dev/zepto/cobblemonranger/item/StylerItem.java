@@ -1,7 +1,6 @@
 package dev.zepto.cobblemonranger.item;
 
 import dev.zepto.cobblemonranger.capture.CaptureManager;
-import dev.zepto.cobblemonranger.capture.FriendManager;
 import dev.zepto.cobblemonranger.field.FieldMove;
 import dev.zepto.cobblemonranger.field.FieldMoveManager;
 import dev.zepto.cobblemonranger.client.ClientPayloads;
@@ -14,7 +13,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
@@ -113,18 +111,21 @@ public class StylerItem extends Item {
             return InteractionResult.PASS;
         }
         Level level = context.getLevel();
-        // Water between the player and the block (a pond floor, say) means Surf, which use() handles.
+        // Water between the player and the block (a pond floor, say) means Surf or Freeze, which use() handles.
         BlockHitResult fluidHit = getPlayerPOVHitResult(level, player, ClipContext.Fluid.ANY);
         if (fluidHit.getType() == HitResult.Type.BLOCK && !fluidHit.getBlockPos().equals(context.getClickedPos())
                 && !level.getFluidState(fluidHit.getBlockPos()).isEmpty()) {
             return InteractionResult.PASS;
         }
-        FieldMove move = FieldMoveManager.moveFor(level, context.getClickedPos());
-        if (move == null) {
+        List<FieldMove> candidates = FieldMoveManager.candidatesFor(level, context.getClickedPos());
+        candidates = candidates.stream().filter(m -> m != FieldMove.TELEKINESIS).toList();
+        if (candidates.isEmpty()) {
             return InteractionResult.PASS;
         }
         if (player instanceof ServerPlayer serverPlayer) {
-            FieldMoveManager.use(serverPlayer, context.getItemInHand(), move, context.getClickedPos());
+            FieldMove move = FieldMoveManager.choose(serverPlayer, context.getItemInHand(), candidates);
+            FieldMoveManager.use(serverPlayer, context.getItemInHand(), move, context.getClickedPos(),
+                    context.getClickedFace());
         }
         return InteractionResult.sidedSuccess(level.isClientSide());
     }
@@ -132,33 +133,46 @@ public class StylerItem extends Item {
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
-        if (!player.isShiftKeyDown()) {
-            BlockHitResult hit = getPlayerPOVHitResult(level, player, ClipContext.Fluid.SOURCE_ONLY);
-            if (hit.getType() != HitResult.Type.BLOCK) {
-                // Right-clicking the air opens the Ranger Browser and Guide.
-                if (level.isClientSide() && hand == InteractionHand.MAIN_HAND
-                        && RangerClientConfig.browserOnRightClick()) {
-                    ClientPayloads.openBrowser();
-                    return InteractionResultHolder.success(stack);
-                }
-                return InteractionResultHolder.pass(stack);
-            }
-            FluidState fluid = level.getFluidState(hit.getBlockPos());
-            FieldMove move = fluid.is(FluidTags.WATER) ? FieldMove.SURF
-                    : fluid.is(FluidTags.LAVA) ? FieldMove.SOAK : null;
-            if (move == null) {
+        if (player.isShiftKeyDown()) {
+            // Sneak + right-click: the field move picker.
+            if (hand != InteractionHand.MAIN_HAND) {
                 return InteractionResultHolder.pass(stack);
             }
             if (player instanceof ServerPlayer serverPlayer) {
-                FieldMoveManager.use(serverPlayer, stack, move, hit.getBlockPos());
+                FieldMoveManager.openPicker(serverPlayer, stack);
             }
             return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
         }
-        if (player instanceof ServerPlayer serverPlayer) {
-            int released = FriendManager.releaseAll(serverPlayer);
-            if (released == 0) {
-                serverPlayer.displayClientMessage(Component.translatable("message.cobblemonranger.no_friends"), true);
+        BlockHitResult hit = getPlayerPOVHitResult(level, player, ClipContext.Fluid.SOURCE_ONLY);
+        if (hit.getType() != HitResult.Type.BLOCK) {
+            // A lever, button or wooden door further away: Telekinesis.
+            BlockHitResult far = FieldMoveManager.telekinesisTarget(level, player);
+            if (far != null) {
+                if (player instanceof ServerPlayer serverPlayer) {
+                    FieldMoveManager.use(serverPlayer, stack, FieldMove.TELEKINESIS, far.getBlockPos(),
+                            far.getDirection());
+                }
+                return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
             }
+            // Right-clicking the air opens the Ranger Browser and Guide.
+            if (level.isClientSide() && hand == InteractionHand.MAIN_HAND
+                    && RangerClientConfig.browserOnRightClick()) {
+                ClientPayloads.openBrowser();
+                return InteractionResultHolder.success(stack);
+            }
+            return InteractionResultHolder.pass(stack);
+        }
+        FluidState fluid = level.getFluidState(hit.getBlockPos());
+        if (fluid.isEmpty()) {
+            return InteractionResultHolder.pass(stack);
+        }
+        List<FieldMove> candidates = FieldMoveManager.candidatesFor(level, hit.getBlockPos());
+        if (candidates.isEmpty()) {
+            return InteractionResultHolder.pass(stack);
+        }
+        if (player instanceof ServerPlayer serverPlayer) {
+            FieldMove move = FieldMoveManager.choose(serverPlayer, stack, candidates);
+            FieldMoveManager.use(serverPlayer, stack, move, hit.getBlockPos(), hit.getDirection());
         }
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
     }

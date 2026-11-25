@@ -1,0 +1,22 @@
+{
+  "render_type": "minecraft:cutout",
+  "ambientocclusion": false,
+  "textures": {
+    "particle": "cobblemonranger:block/silk",
+    "silk": "cobblemonranger:block/silk"
+  },
+  "elements": [
+    {
+      "from": [0, 12, 0],
+      "to": [16, 16, 16],
+      "faces": {
+        "up": { "uv": [0, 0, 16, 16], "texture": "#silk" },
+        "down": { "uv": [0, 0, 16, 16], "texture": "#silk" },
+        "north": { "uv": [0, 0, 16, 4], "texture": "#silk" },
+        "south": { "uv": [0, 0, 16, 4], "texture": "#silk" },
+        "east": { "uv": [0, 0, 16, 4], "texture": "#silk" },
+        "west": { "uv": [0, 0, 16, 4], "texture": "#silk" }
+      }
+    }
+  ]
+}

@@ -43,7 +43,7 @@ import java.util.UUID;
  * helped, as in the DS games; the Partner Pokémon stays but the styler spends a little energy.
  */
 public final class FieldMoveManager {
-    private static final int PARTNER_ENERGY_COST = 3;
+    public static final int PARTNER_ENERGY_COST = 3;
     private static final int MAX_TREE_LOGS = 128;
     private static final int SOAK_RADIUS = 5;
     private static final int SURF_TICKS = 20 * 120;

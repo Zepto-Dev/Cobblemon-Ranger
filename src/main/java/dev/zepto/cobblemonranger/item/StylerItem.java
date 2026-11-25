@@ -4,6 +4,8 @@ import dev.zepto.cobblemonranger.capture.CaptureManager;
 import dev.zepto.cobblemonranger.capture.FriendManager;
 import dev.zepto.cobblemonranger.field.FieldMove;
 import dev.zepto.cobblemonranger.field.FieldMoveManager;
+import dev.zepto.cobblemonranger.client.ClientPayloads;
+import dev.zepto.cobblemonranger.config.RangerClientConfig;
 import dev.zepto.cobblemonranger.config.RangerConfig;
 import dev.zepto.cobblemonranger.registry.ModDataComponents;
 import net.minecraft.ChatFormatting;
@@ -133,6 +135,12 @@ public class StylerItem extends Item {
         if (!player.isShiftKeyDown()) {
             BlockHitResult hit = getPlayerPOVHitResult(level, player, ClipContext.Fluid.SOURCE_ONLY);
             if (hit.getType() != HitResult.Type.BLOCK) {
+                // Right-clicking the air opens the Ranger Browser and Guide.
+                if (level.isClientSide() && hand == InteractionHand.MAIN_HAND
+                        && RangerClientConfig.browserOnRightClick()) {
+                    ClientPayloads.openBrowser();
+                    return InteractionResultHolder.success(stack);
+                }
                 return InteractionResultHolder.pass(stack);
             }
             FluidState fluid = level.getFluidState(hit.getBlockPos());

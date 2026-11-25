@@ -1,5 +1,7 @@
 package dev.zepto.cobblemonranger.mission;
 
+import dev.zepto.cobblemonranger.browser.BrowserManager;
+import dev.zepto.cobblemonranger.browser.GuidePage;
 import com.cobblemon.mod.common.api.types.ElementalType;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import dev.zepto.cobblemonranger.config.RangerConfig;
@@ -144,6 +146,7 @@ public final class MissionManager {
         }
         int tier = tierFor(villager, data.rank());
         Mission mission = generate(villager, tier, player.getRandom());
+        BrowserManager.unlock(player, GuidePage.MISSIONS);
         OFFERS.put(player.getUUID(), new Offer(mission, now + OFFER_TICKS));
         villager.playSound(SoundEvents.VILLAGER_TRADE, 1f, 1f);
         MutableComponent accept = Component.translatable("message.cobblemonranger.mission_accept")
@@ -165,6 +168,27 @@ public final class MissionManager {
                     tierName(villager.getVillagerData().getLevel())).withStyle(ChatFormatting.GRAY));
         }
         player.sendSystemMessage(Component.empty().append(accept).append("  ").append(decline));
+    }
+
+    /** Announces a new rank and whatever it unlocks; does nothing if the rank didn't change. */
+    public static void announceRankUp(ServerPlayer player, int oldRank, int newRank) {
+        if (newRank <= oldRank) {
+            return;
+        }
+        player.serverLevel().playSound(null, player.blockPosition(), SoundEvents.UI_TOAST_CHALLENGE_COMPLETE,
+                SoundSource.PLAYERS, 1f, 1f);
+        player.sendSystemMessage(Component.translatable("message.cobblemonranger.rank_up", newRank,
+                RangerManager.rankTitle(newRank)).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
+        for (RangerSign sign : RangerSign.values()) {
+            if (sign.rank() > oldRank && sign.rank() <= newRank) {
+                player.sendSystemMessage(Component.translatable("message.cobblemonranger.sign_unlocked",
+                        sign.displayName()).withStyle(ChatFormatting.AQUA));
+            }
+        }
+        if (maxTierForRank(newRank) > maxTierForRank(oldRank)) {
+            player.sendSystemMessage(Component.translatable("message.cobblemonranger.tier_unlocked",
+                    tierName(maxTierForRank(newRank))).withStyle(ChatFormatting.AQUA));
+        }
     }
 
     public static Component tierName(int tier) {
@@ -281,22 +305,8 @@ public final class MissionManager {
             RangerHq.addMissionXp(player, villager);
         }
 
-        if (newRank > oldRank) {
-            player.serverLevel().playSound(null, player.blockPosition(), SoundEvents.UI_TOAST_CHALLENGE_COMPLETE,
-                    SoundSource.PLAYERS, 1f, 1f);
-            player.sendSystemMessage(Component.translatable("message.cobblemonranger.rank_up", newRank,
-                    RangerManager.rankTitle(newRank)).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
-            for (RangerSign sign : RangerSign.values()) {
-                if (sign.rank() > oldRank && sign.rank() <= newRank) {
-                    player.sendSystemMessage(Component.translatable("message.cobblemonranger.sign_unlocked",
-                            sign.displayName()).withStyle(ChatFormatting.AQUA));
-                }
-            }
-            if (maxTierForRank(newRank) > maxTierForRank(oldRank)) {
-                player.sendSystemMessage(Component.translatable("message.cobblemonranger.tier_unlocked",
-                        tierName(maxTierForRank(newRank))).withStyle(ChatFormatting.AQUA));
-            }
-        }
+        announceRankUp(player, oldRank, newRank);
+        BrowserManager.unlock(player, GuidePage.SIGNS);
     }
 
     private static void give(ServerPlayer player, ItemStack stack) {
@@ -305,34 +315,37 @@ public final class MissionManager {
         }
     }
 
-    /** The mission panel of the Ranger HQ Terminal screen: rank, the current mission and when the next one comes. */
+    /**
+     * The mission panel of the Ranger HQ Terminal screen: rank, the current mission and when the next one comes.
+     * Colours suit the screen's dark navy background.
+     */
     public static List<Component> hqLines(ServerPlayer player) {
         RangerData data = RangerManager.get(player);
         List<Component> lines = new ArrayList<>();
         int next = RangerData.pointsForNextRank(data.rank());
         lines.add(Component.translatable("gui.cobblemonranger.hq.rank", data.rank(), RangerManager.rankTitle(data.rank()))
-                .withStyle(ChatFormatting.DARK_AQUA));
+                .withStyle(ChatFormatting.AQUA));
         lines.add(Component.translatable(next < 0 ? "gui.cobblemonranger.hq.points_max" : "gui.cobblemonranger.hq.points",
-                data.points(), next).withStyle(ChatFormatting.DARK_GRAY));
+                data.points(), next).withStyle(ChatFormatting.GRAY));
         lines.add(Component.empty());
         Optional<Mission> current = data.mission();
         if (current.isPresent()) {
             Mission mission = current.get();
             lines.add(Component.translatable("gui.cobblemonranger.hq.mission_header", tierName(mission.tier()))
                     .withStyle(ChatFormatting.GOLD));
-            lines.add(RangerManager.missionLine(mission).copy().withStyle(ChatFormatting.BLACK));
+            lines.add(RangerManager.missionLine(mission).copy().withStyle(ChatFormatting.WHITE));
             lines.add(Component.translatable(mission.isComplete() ? "gui.cobblemonranger.hq.mission_done"
                     : "gui.cobblemonranger.hq.mission_giver", mission.giverName())
-                    .withStyle(mission.isComplete() ? ChatFormatting.DARK_GREEN : ChatFormatting.DARK_GRAY));
+                    .withStyle(mission.isComplete() ? ChatFormatting.GREEN : ChatFormatting.GRAY));
             lines.add(Component.translatable("gui.cobblemonranger.hq.mission_reward", mission.emeralds(), mission.xp(),
-                    mission.points()).withStyle(ChatFormatting.DARK_GRAY));
+                    mission.points()).withStyle(ChatFormatting.GRAY));
         } else {
             lines.add(Component.translatable("gui.cobblemonranger.hq.no_mission").withStyle(ChatFormatting.GOLD));
             long wait = player.getData(ModAttachments.NEXT_MISSION) - RangerManager.now(player);
             lines.add((wait > 0
                     ? Component.translatable("gui.cobblemonranger.hq.next_mission", (wait + 1199) / 1200)
                     : Component.translatable("gui.cobblemonranger.hq.mission_ready"))
-                    .withStyle(ChatFormatting.DARK_GRAY));
+                    .withStyle(ChatFormatting.GRAY));
         }
         return lines;
     }

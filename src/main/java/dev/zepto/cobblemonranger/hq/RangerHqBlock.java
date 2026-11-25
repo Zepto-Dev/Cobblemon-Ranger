@@ -1,5 +1,7 @@
 package dev.zepto.cobblemonranger.hq;
 
+import dev.zepto.cobblemonranger.browser.BrowserManager;
+import dev.zepto.cobblemonranger.browser.GuidePage;
 import com.mojang.serialization.MapCodec;
 import dev.zepto.cobblemonranger.mission.MissionManager;
 import net.minecraft.core.BlockPos;
@@ -52,6 +54,7 @@ public class RangerHqBlock extends HorizontalDirectionalBlock {
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player,
                                                BlockHitResult hit) {
         if (player instanceof ServerPlayer serverPlayer) {
+            BrowserManager.unlock(serverPlayer, GuidePage.MISSIONS, GuidePage.UPGRADES);
             List<Component> lines = MissionManager.hqLines(serverPlayer);
             ContainerLevelAccess access = ContainerLevelAccess.create(level, pos);
             serverPlayer.openMenu(new SimpleMenuProvider(

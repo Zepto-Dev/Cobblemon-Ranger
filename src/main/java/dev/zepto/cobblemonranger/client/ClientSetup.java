@@ -26,6 +26,9 @@ import org.lwjgl.glfw.GLFW;
 public final class ClientSetup {
     public static final KeyMapping SIGN_KEY = new KeyMapping("key.cobblemonranger.sign", InputConstants.Type.KEYSYM,
             GLFW.GLFW_KEY_G, "key.categories.cobblemonranger");
+    /** Opens the Ranger Browser; unbound by default, since right-clicking the air with a styler does the same. */
+    public static final KeyMapping BROWSER_KEY = new KeyMapping("key.cobblemonranger.browser",
+            InputConstants.Type.KEYSYM, InputConstants.UNKNOWN.getValue(), "key.categories.cobblemonranger");
 
     private ClientSetup() {
     }
@@ -49,6 +52,7 @@ public final class ClientSetup {
     @SubscribeEvent
     public static void registerKeys(RegisterKeyMappingsEvent event) {
         event.register(SIGN_KEY);
+        event.register(BROWSER_KEY);
     }
 
     @SubscribeEvent
@@ -61,6 +65,16 @@ public final class ClientSetup {
     @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
+        while (BROWSER_KEY.consumeClick()) {
+            if (minecraft.player != null && minecraft.screen == null) {
+                if (hasStyler(minecraft.player)) {
+                    ClientPayloads.openBrowser();
+                } else {
+                    minecraft.player.displayClientMessage(
+                            Component.translatable("message.cobblemonranger.browser_need_styler"), true);
+                }
+            }
+        }
         while (SIGN_KEY.consumeClick()) {
             if (minecraft.player == null || minecraft.screen != null) {
                 continue;

@@ -2,6 +2,7 @@ package dev.zepto.cobblemonranger.registry;
 
 import com.mojang.serialization.Codec;
 import dev.zepto.cobblemonranger.CobblemonRanger;
+import dev.zepto.cobblemonranger.browser.BrowserData;
 import dev.zepto.cobblemonranger.capture.PartnerCharge;
 import dev.zepto.cobblemonranger.ranger.RangerData;
 import net.neoforged.neoforge.attachment.AttachmentType;
@@ -27,6 +28,10 @@ public final class ModAttachments {
     /** Game time after which a Ranger HQ Terminal will charge this player's styler again. */
     public static final Supplier<AttachmentType<Long>> NEXT_HQ_CHARGE = ATTACHMENTS.register("next_hq_charge",
             () -> AttachmentType.builder(() -> 0L).serialize(Codec.LONG).copyOnDeath().build());
+
+    /** Species befriended for the Ranger Browser, and Guide pages unlocked and read. */
+    public static final Supplier<AttachmentType<BrowserData>> BROWSER = ATTACHMENTS.register("browser",
+            () -> AttachmentType.builder(() -> BrowserData.EMPTY).serialize(BrowserData.CODEC).copyOnDeath().build());
 
     private ModAttachments() {
     }

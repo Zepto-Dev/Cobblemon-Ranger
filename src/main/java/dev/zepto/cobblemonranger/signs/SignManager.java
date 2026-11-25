@@ -1,5 +1,7 @@
 package dev.zepto.cobblemonranger.signs;
 
+import dev.zepto.cobblemonranger.browser.BrowserManager;
+import dev.zepto.cobblemonranger.browser.GuidePage;
 import com.cobblemon.mod.common.Cobblemon;
 import com.cobblemon.mod.common.CobblemonEntities;
 import com.cobblemon.mod.common.api.pokemon.PokemonProperties;
@@ -131,6 +133,7 @@ public final class SignManager {
         }
 
         ServerLevel level = player.serverLevel();
+        BrowserManager.unlock(player, GuidePage.SIGNS);
         Entity helper = spawnHelper(player, sign);
         SUMMONS.add(new Summon(player, sign, helper));
         level.playSound(null, player.blockPosition(), SoundEvents.BEACON_POWER_SELECT, SoundSource.PLAYERS, 1f, 1.2f);

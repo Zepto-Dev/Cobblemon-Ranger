@@ -70,6 +70,11 @@ public final class RangerConfig {
         return valueOr(STYLER_RECHARGE_SECONDS, 8) * 20;
     }
 
+    /** A setting's current value, or its default when the config isn't loaded (on a client outside a world). */
+    public static int current(ModConfigSpec.IntValue value) {
+        return valueOr(value, value.getDefault());
+    }
+
     /** Server config isn't loaded on a client outside a world, where only the default matters. */
     private static int valueOr(ModConfigSpec.IntValue value, int fallback) {
         try {

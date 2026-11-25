@@ -24,6 +24,7 @@ import dev.zepto.cobblemonranger.registry.ModVillagers;
 import dev.zepto.cobblemonranger.signs.SignManager;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
+import dev.zepto.cobblemonranger.browser.BrowserManager;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -58,6 +59,7 @@ public final class CobblemonRanger {
         }));
 
         NeoForge.EVENT_BUS.register(CaptureManager.class);
+        NeoForge.EVENT_BUS.register(BrowserManager.class);
         NeoForge.EVENT_BUS.register(FriendManager.class);
         NeoForge.EVENT_BUS.register(PartnerManager.class);
         NeoForge.EVENT_BUS.register(RangerManager.class);

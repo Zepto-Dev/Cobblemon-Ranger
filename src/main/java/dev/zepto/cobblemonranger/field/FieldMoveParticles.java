@@ -1,46 +1,46 @@
 package dev.zepto.cobblemonranger.field;
 
-import net.minecraft.core.particles.DustParticleOptions;
+import dev.zepto.cobblemonranger.registry.ModParticles;
 import net.minecraft.core.particles.ParticleOptions;
-import net.minecraft.core.particles.ParticleTypes;
-import org.joml.Vector3f;
 
-/** The particle each field move shows. */
+/** The glow particle each field move shows. */
 public final class FieldMoveParticles {
-    private static final DustParticleOptions PSYCHIC = new DustParticleOptions(new Vector3f(0.98f, 0.33f, 0.53f), 1f);
-
     private FieldMoveParticles() {
     }
 
+    public static ParticleOptions of(FieldMove move) {
+        return ModParticles.FIELD_MOVES.get(move).get();
+    }
+
     public static ParticleOptions flash() {
-        return ParticleTypes.END_ROD;
+        return of(FieldMove.FLASH);
     }
 
     public static ParticleOptions tailwind() {
-        return ParticleTypes.CLOUD;
+        return of(FieldMove.TAILWIND);
     }
 
     public static ParticleOptions spook() {
-        return ParticleTypes.SOUL;
+        return of(FieldMove.SPOOK);
     }
 
     public static ParticleOptions charm() {
-        return ParticleTypes.HEART;
+        return of(FieldMove.CHARM);
     }
 
     public static ParticleOptions magnet() {
-        return ParticleTypes.ELECTRIC_SPARK;
+        return of(FieldMove.MAGNET);
     }
 
     public static ParticleOptions decompose() {
-        return ParticleTypes.WITCH;
+        return of(FieldMove.DECOMPOSE);
     }
 
     public static ParticleOptions stringShot() {
-        return ParticleTypes.WHITE_ASH;
+        return of(FieldMove.STRING_SHOT);
     }
 
     public static ParticleOptions telekinesis() {
-        return PSYCHIC;
+        return of(FieldMove.TELEKINESIS);
     }
 }

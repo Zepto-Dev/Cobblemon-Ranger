@@ -417,7 +417,7 @@ public final class FieldMoveManager {
 
         Component name = helper.pokemon.getSpecies().getTranslatedName();
         Vec3 center = move.targeted() ? Vec3.atCenterOf(pos) : player.position().add(0, 1, 0);
-        level.sendParticles(ParticleTypes.HAPPY_VILLAGER, center.x, center.y, center.z, 12, 0.6, 0.6, 0.6, 0);
+        level.sendParticles(FieldMoveParticles.of(move), center.x, center.y, center.z, 16, 0.6, 0.6, 0.6, 0.02);
         if (helper.partner) {
             StylerItem.drainEnergy(styler, PARTNER_ENERGY_COST);
             PARTNER_READY_AT.put(player.getUUID(),
@@ -637,7 +637,7 @@ public final class FieldMoveManager {
         }
         if (done > 0) {
             sound(level, center, SoundEvents.FIRECHARGE_USE, 1.1f);
-            burst(level, ParticleTypes.FLAME, Vec3.atCenterOf(center), 20, 0.7, 0.02);
+            burst(level, FieldMoveParticles.of(FieldMove.BURN), Vec3.atCenterOf(center), 20, 0.7, 0.02);
         }
         return done;
     }
@@ -742,7 +742,7 @@ public final class FieldMoveManager {
             }
             level.setBlockAndUpdate(pos, fluid.isSource() ? Blocks.OBSIDIAN.defaultBlockState()
                     : Blocks.COBBLESTONE.defaultBlockState());
-            level.sendParticles(ParticleTypes.SNOWFLAKE, pos.getX() + 0.5, pos.getY() + 1, pos.getZ() + 0.5,
+            level.sendParticles(FieldMoveParticles.of(FieldMove.FREEZE), pos.getX() + 0.5, pos.getY() + 1, pos.getZ() + 0.5,
                     2, 0.3, 0.1, 0.3, 0.01);
             done++;
         }
@@ -770,7 +770,7 @@ public final class FieldMoveManager {
                         && level.getBlockState(pos.above()).isAir() && mayPlace(level, player, pos)) {
                     level.setBlockAndUpdate(pos, Blocks.FROSTED_ICE.defaultBlockState());
                     TEMP_ICE.add(new TempIce(level, pos, until + level.getRandom().nextInt(40)));
-                    level.sendParticles(ParticleTypes.SNOWFLAKE, pos.getX() + 0.5, pos.getY() + 1.1,
+                    level.sendParticles(FieldMoveParticles.of(FieldMove.FREEZE), pos.getX() + 0.5, pos.getY() + 1.1,
                             pos.getZ() + 0.5, 2, 0.3, 0.05, 0.3, 0.01);
                     done++;
                 }
@@ -1052,7 +1052,7 @@ public final class FieldMoveManager {
             return 0;
         }
         sound(level, pos, SoundEvents.ENDER_DRAGON_GROWL, 1.6f);
-        level.sendParticles(ParticleTypes.DRAGON_BREATH, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
+        level.sendParticles(FieldMoveParticles.of(FieldMove.OUTRAGE), pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
                 20, 0.4, 0.4, 0.4, 0.02);
         return 1;
     }
@@ -1079,7 +1079,7 @@ public final class FieldMoveManager {
         if (!player.getInventory().add(taken)) {
             player.drop(taken, false);
         }
-        level.sendParticles(ParticleTypes.SMOKE, target.getX(), target.getY() + 1, target.getZ(), 10, 0.3, 0.4, 0.3,
+        level.sendParticles(FieldMoveParticles.of(FieldMove.SNATCH), target.getX(), target.getY() + 1, target.getZ(), 10, 0.3, 0.4, 0.3,
                 0.02);
         sound(level, target.blockPosition(), SoundEvents.ITEM_PICKUP, 0.6f);
         return 1;

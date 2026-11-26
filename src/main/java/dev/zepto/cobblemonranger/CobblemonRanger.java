@@ -18,6 +18,7 @@ import dev.zepto.cobblemonranger.registry.ModBlocks;
 import dev.zepto.cobblemonranger.registry.ModCreativeTabs;
 import dev.zepto.cobblemonranger.registry.ModDataComponents;
 import dev.zepto.cobblemonranger.registry.ModEffects;
+import dev.zepto.cobblemonranger.registry.ModParticles;
 import dev.zepto.cobblemonranger.registry.ModItems;
 import dev.zepto.cobblemonranger.registry.ModMenus;
 import dev.zepto.cobblemonranger.registry.ModRecipes;
@@ -46,6 +47,7 @@ public final class CobblemonRanger {
         ModDataComponents.COMPONENTS.register(modBus);
         ModAttachments.ATTACHMENTS.register(modBus);
         ModEffects.EFFECTS.register(modBus);
+        ModParticles.PARTICLES.register(modBus);
         ModSounds.SOUNDS.register(modBus);
         ModBlocks.BLOCKS.register(modBus);
         ModItems.ITEMS.register(modBus);

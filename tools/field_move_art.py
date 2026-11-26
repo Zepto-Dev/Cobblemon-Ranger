@@ -357,6 +357,164 @@ ICONS["charm"] = ([
     "................",
 ], {"p": hexa(0xFF7FA8), "P": hexa(0xD0507E), "W": hexa(0xFFFFFF), "w": hexa(0xFFFFFF)})
 
+ALT_ICONS = {}
+W_ = {"W": hexa(0xF4F1E6), "S": hexa(0xC8C2AA)}
+
+ALT_ICONS["string_shot_B"] = ([
+    "................",
+    "...oooooooooo...",
+    "...obbbbbbbbo...",
+    "...oooooooooo...",
+    "....oWWWWWWo....",
+    "....oWSWSWSo....",
+    "....oWWWWWWo....",
+    "....oSWSWSWo....",
+    "....oWWWWWWo....",
+    "...oooooooooo..o",
+    "...obbbbbbbbo.oW",
+    "...oooooooooooWo",
+    "......oWWWWWWWo.",
+    "...oooWoooooo...",
+    "..oWWWo.........",
+    "..ooo...........",
+], {**W_, "b": hexa(0x9C6B3E)})
+
+ALT_ICONS["string_shot_C"] = ([
+    "................",
+    "..oooo..........",
+    ".oggggo.........",
+    "oggGggGo........",
+    "ogkgggkgo.......",
+    "oggggggWWo......",
+    ".ogggggoWWo.....",
+    "..ooooo..oWo....",
+    ".........oWo....",
+    "........oWo..o..",
+    ".......oWo..oWo.",
+    "......oWWoooWWo.",
+    "......oWWWWWWo..",
+    ".......ooWWoo...",
+    ".........oo.....",
+    "................",
+], {**W_, "g": hexa(0x8BC34A), "G": hexa(0xC5E86C), "k": hexa(0x1A1C2C)})
+
+ALT_ICONS["string_shot_D"] = ([
+    "...oooooooooo...",
+    "...obbbbbbbbo...",
+    "...ooooWooooo...",
+    ".......oWo......",
+    ".......oWo......",
+    "......oWWWo.....",
+    ".....oWWSWWo....",
+    "....oWWSWWSWo...",
+    "....oWSWWSWWo...",
+    "....oWWSWWSWo...",
+    "....oWSWWSWWo...",
+    "....oWWSWWSWo...",
+    ".....oWWSWWo....",
+    "......oWWWo.....",
+    ".......ooo......",
+    "................",
+], {**W_, "b": hexa(0x9C6B3E)})
+
+ALT_ICONS["string_shot_E"] = ([
+    "................",
+    ".oo.............",
+    "oWWo............",
+    "oWWWoo..........",
+    ".oWWWWoo........",
+    "..ooWWWWo.......",
+    "....ooWWWo......",
+    "......oWWo......",
+    ".......oWWo.....",
+    ".......oWWo..o..",
+    "......oWWo..oDo.",
+    ".....oWWo...oDo.",
+    "....oWWWWo...o..",
+    "...oWWWWWWo.....",
+    "....oooooo......",
+    "................",
+], {**W_, "D": hexa(0xBFEFFF)})
+
+P_ = {"p": hexa(0xB45AD0), "P": hexa(0xE0A0FF)}
+
+ALT_ICONS["decompose_B"] = ([
+    "..........o.....",
+    ".........oPo....",
+    "....o.....o.....",
+    "...oPo.......o..",
+    "....o..o....opo.",
+    ".......oPo...o..",
+    "........o.......",
+    "......oooo......",
+    "....oowwwwoo....",
+    "...owwWwwwwwo...",
+    "..owwwwwwwWwwo..",
+    "..owWwwwwwwwwo..",
+    ".owwwwwWwwwwwwo.",
+    ".owwwwwwwwwWwwo.",
+    "oggggggggggggggo",
+    "oooooooooooooooo",
+], {**P_, "w": hexa(0xF2F2F2), "W": hexa(0xC8C8D0), "g": hexa(0x8C8C94)})
+
+ALT_ICONS["decompose_C"] = ([
+    "......o.........",
+    ".....oto..o.....",
+    "......o..oPo....",
+    "....oooo..o.....",
+    "...orrrrooo.....",
+    "..orrRrrrrro..o.",
+    "..orRrrrrrro.oPo",
+    "..orrrrrpppo..o.",
+    "..orrrrppPpo....",
+    "..orrrpppppo.o..",
+    "...orrppppo.oPo.",
+    "....oopppoo..o..",
+    "......ooo.......",
+    "....ooppppoo....",
+    "...opppPpppppo..",
+    "....oooooooooo..",
+], {**P_, "t": hexa(0x6E4A2A), "r": hexa(0xA0522D), "R": hexa(0xD08050)})
+
+ALT_ICONS["decompose_D"] = ([
+    "................",
+    ".......oo.......",
+    "......oLLo..oo..",
+    ".....oLLGo.oLLo.",
+    ".....oLGLooLLGo.",
+    "......ooLGLGoo..",
+    "........oGGo....",
+    ".o......oGo...o.",
+    "oPo.....oGo..oPo",
+    ".o......oGo...o.",
+    "...ooooooGoooo..",
+    "..oddDdddddDddo.",
+    ".odddddpddddddo.",
+    ".odDddddddDdpdo.",
+    ".odddpdddddddDo.",
+    ".oooooooooooooo.",
+], {**P_, "L": hexa(0x7CC45A), "G": hexa(0x3E8E3A), "d": hexa(0x4A3424), "D": hexa(0x6E4A2A)})
+
+ALT_ICONS["decompose_E"] = ([
+    "......oo........",
+    ".....oPpo.......",
+    "....oPpppo......",
+    "....oppppo......",
+    "....oppppo......",
+    ".....oppo.......",
+    "......oo........",
+    "................",
+    "..oo...p...oo...",
+    ".owwoo.p.oowwo..",
+    ".owwwwoooowwwo..",
+    "..owwwwppwwwo...",
+    ".owwwoppppowwo..",
+    ".owwo.oppo.owo..",
+    "..oo...oo...o...",
+    "................",
+], {**P_, "w": hexa(0xEDE6D2)})
+
+
 TYPE_OF = {
     "headbutt": ("normal", 0xA8A77A), "burn": ("fire", 0xEE8130), "surf": ("water", 0x6390F0),
     "cut": ("grass", 0x7AC74C), "flash": ("electric", 0xF7D02C), "freeze": ("ice", 0x96D9D6),
@@ -376,7 +534,7 @@ def icon(name):
         img = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
         img.alpha_composite(crop, ((16 - crop.width) // 2, (16 - crop.height) // 2))
         return img
-    rows, pal = ICONS[name]
+    rows, pal = ALT_ICONS[name] if name in ALT_ICONS else ICONS[name]
     img = paint(rows, pal)
     if name == "cut":
         # A white slash across the leaf, splitting it in two.
@@ -448,7 +606,7 @@ def style_d(name):
     """D: full-colour icon on the navy tile with a type-coloured rim."""
     cell = Image.new("RGBA", (20, 20), (0, 0, 0, 0))
     d = ImageDraw.Draw(cell)
-    col = hexa(TYPE_OF[name][1])
+    col = hexa(TYPE_OF[name.rsplit("_", 1)[0] if name in ALT_ICONS else name][1])
     d.rounded_rectangle([0, 0, 19, 19], radius=3, fill=hexa(0x0B1118))
     d.rounded_rectangle([1, 1, 18, 18], radius=3, fill=col)
     d.rounded_rectangle([2, 2, 17, 17], radius=2, fill=CELLC)
@@ -534,6 +692,8 @@ SILK_STYLES = {"A": ("Woven mat", silk_a), "B": ("Strand net (see-through)", sil
 # ---------------------------------------------------------------- particles (8x8, 4 frames)
 
 PARTICLES = ["flash", "tailwind", "spook", "charm", "magnet", "decompose", "string_shot", "telekinesis"]
+# Round 2: one glow particle for every other field move too.
+MORE_PARTICLES = ["headbutt", "burn", "surf", "cut", "freeze", "rock_smash", "dig", "stone_edge", "outrage", "snatch"]
 
 
 def particle_b(kind, frame):
@@ -627,6 +787,49 @@ def particle_c(kind, frame):
         d.ellipse([4 - r, 4 - r, 3 + r, 3 + r], outline=col)
         d.point((4, 4), fill=glow)
     return img
+
+
+GLOW_SHAPES = {
+    "headbutt": (0xFFD23F, ["........", "...W....", "...W....", ".WWCWW..", "...W....", "...W....", "........", "........"]),
+    "burn": (0xFF8A30, ["........", "...W....", "..WWW...", "..WCW...", ".WWCWW..", ".WCCCW..", "..WWW...", "........"]),
+    "surf": (0x4FA8F0, ["........", "...W....", "...W....", "..WWW...", ".WWCWW..", ".WCCWW..", "..WWW...", "........"]),
+    "cut": (0x7CC45A, ["........", "......W.", ".....WW.", "....WCW.", "...WCW..", "..WWW...", ".W......", "........"]),
+    "freeze": (0xBFEFFF, ["........", "W..W..W.", ".W.W.W..", "..WCW...", "WWCCCWW.", "..WCW...", ".W.W.W..", "W..W..W."]),
+    "rock_smash": (0x9C9CA6, ["........", "..WWW...", ".WCCWW..", ".WCWWW..", "..WWW...", "........", "........", "........"]),
+    "dig": (0x9C6B3E, ["........", "........", "..WW....", ".WCWW...", ".WWWW...", "..WW....", "........", "........"]),
+    "stone_edge": (0xD8D8E0, ["........", "....W...", "...WW...", "...WC...", "..WCW...", "..WCW...", ".WWW....", "........"]),
+    "outrage": (0x9A5AF0, ["...W....", "...WW...", "..WCW...", "..WCCW..", ".WCOCW..", ".WCOOW..", "..WWW...", "........"]),
+    "snatch": (0x4A4060, ["........", "..WWW...", ".WWWWW..", ".WRWRW..", ".WWWWW..", ".W.W.W..", "........", "........"]),
+}
+
+
+def particle_glow(kind, frame):
+    """Round 2 glow particles: a shape with a bright core that fades and drifts over 4 frames."""
+    base, rows = GLOW_SHAPES[kind]
+    a = [255, 220, 160, 90][frame]
+    img = Image.new("RGBA", (8, 8), (0, 0, 0, 0))
+    col = {"W": hexa(base, a), "C": hexa(0xFFFFFF, a), "O": hexa(0xFF9A30, a), "R": hexa(0xFF4040, a)}
+    shift = frame // 2 if kind in ("burn", "outrage", "snatch") else 0
+    for y, row in enumerate(rows):
+        for x, ch in enumerate(row):
+            if ch != "." and 0 <= y - shift < 8:
+                img.putpixel((x, y - shift), col[ch])
+    return img
+
+
+def sheet_more_particles(out):
+    scale = 8
+    img = Image.new("RGBA", (180 + 4 * (8 * scale + 2), 50 + len(MORE_PARTICLES) * (8 * scale + 14)), BG)
+    d = ImageDraw.Draw(img)
+    label(d, (12, 10), "ROUND 2 - glow particles (style C) for the other 10 field moves, 4 frames at 8x.")
+    for i, kind in enumerate(MORE_PARTICLES):
+        y = 40 + i * (8 * scale + 14)
+        label(d, (12, y + 26), kind.replace("_", " ").title(), TEXT)
+        for f in range(4):
+            tile = Image.new("RGBA", (8, 8), PANEL)
+            tile.alpha_composite(particle_glow(kind, f))
+            img.alpha_composite(tile.resize((8 * scale, 8 * scale), Image.NEAREST), (180 + f * (8 * scale + 2), y))
+    img.save(os.path.join(out, "particles-round-2.png"))
 
 
 PARTICLE_STYLES = {"B": ("Outlined, like the assist sprites", particle_b), "C": ("Soft glow, no outline", particle_c)}
@@ -802,6 +1005,30 @@ def sheet_wheel(out, style="D"):
     img.save(os.path.join(out, "picker.png"))
 
 
+ALT_TITLES = {"string_shot_A": "A current web", "string_shot_B": "B thread spool", "string_shot_C": "C bug shooting silk",
+              "string_shot_D": "D hanging cocoon", "string_shot_E": "E sticky strand",
+              "decompose_A": "A bone + mound", "decompose_B": "B bone meal + spores", "decompose_C": "C rotting apple",
+              "decompose_D": "D compost sprout", "decompose_E": "E acid on a bone"}
+
+
+def sheet_alt_icons(out):
+    """Round 2: other versions of the String Shot and Decompose icons, in the picked style D."""
+    scale = 5
+    cw = 20 * scale + 40
+    img = Image.new("RGBA", (40 + cw * 5, 60 + 2 * (20 * scale + 50)), BG)
+    d = ImageDraw.Draw(img)
+    label(d, (12, 10), "ROUND 2 - String Shot and Decompose icon versions (style D, 5x). A is the current one.")
+    for r, move in enumerate(["string_shot", "decompose"]):
+        y = 40 + r * (20 * scale + 50)
+        for c, letter in enumerate("ABCDE"):
+            key = move if letter == "A" else move + "_" + letter
+            x = 20 + c * cw
+            img.alpha_composite(style_d(key).resize((20 * scale, 20 * scale), Image.NEAREST), (x, y))
+            label(d, (x, y + 20 * scale + 6), ALT_TITLES[move + "_" + letter], TEXT)
+            img.alpha_composite(style_d(key).resize((40, 40), Image.NEAREST), (x + 20 * scale - 40, y + 20 * scale + 20))
+    img.save(os.path.join(out, "icons-round-2.png"))
+
+
 def previews(out):
     os.makedirs(out, exist_ok=True)
     sheet_icons(out)
@@ -809,11 +1036,15 @@ def previews(out):
     sheet_silk(out)
     sheet_particles(out)
     sheet_wheel(out)
+    sheet_alt_icons(out)
+    sheet_more_particles(out)
 
 
 # Dylan's picks (letters from the option sheets).
 CHOSEN_ICONS = "D"
-CHOSEN_SILK = "B"
+CHOSEN_SILK = "C"
+CHOSEN_PARTICLES = "C"
+CHOSEN_ALTS = {"string_shot": "A", "decompose": "A"}  # round-2 letters; A = the first version
 TEXTURES = "src/main/resources/assets/cobblemonranger/textures"
 
 
@@ -822,13 +1053,26 @@ def build():
     fn = ICON_STYLES[CHOSEN_ICONS][1]
     atlas = Image.new("RGBA", (120, 60), (0, 0, 0, 0))
     for i, name in enumerate(ORDER):
-        atlas.alpha_composite(fn(name), ((i % 6) * 20, (i // 6) * 20))
+        letter = CHOSEN_ALTS.get(name, "A")
+        atlas.alpha_composite(fn(name if letter == "A" else name + "_" + letter), ((i % 6) * 20, (i // 6) * 20))
     os.makedirs(TEXTURES + "/gui", exist_ok=True)
     atlas.save(TEXTURES + "/gui/field_moves.png")
     os.makedirs(TEXTURES + "/block", exist_ok=True)
     SILK_STYLES[CHOSEN_SILK][1]().save(TEXTURES + "/block/silk.png")
     ladder = silk_d() if CHOSEN_SILK in ("B", "D") else SILK_STYLES[CHOSEN_SILK][1]()
     ladder.save(TEXTURES + "/block/silk_ladder.png")
+    # One glow particle per move, 4 frames each, plus the particle definition files that list them.
+    os.makedirs(TEXTURES + "/particle", exist_ok=True)
+    defs = "src/main/resources/assets/cobblemonranger/particles"
+    os.makedirs(defs, exist_ok=True)
+    for name in ORDER:
+        frames = []
+        for f in range(4):
+            frame = particle_c(name, f) if name in PARTICLES else particle_glow(name, f)
+            frame.save(TEXTURES + "/particle/%s_%d.png" % (name, f))
+            frames.append('"cobblemonranger:%s_%d"' % (name, f))
+        with open(os.path.join(defs, name + ".json"), "w") as out:
+            out.write('{\n  "textures": [%s]\n}\n' % ", ".join(frames))
 
 
 if __name__ == "__main__":

@@ -220,8 +220,10 @@ public final class MissionManager {
                 effort = required * 20;
             }
             case FIELD_MOVE -> {
-                List<FieldMove> moves = tier >= 3 ? List.of(FieldMove.CUT, FieldMove.ROCK_SMASH, FieldMove.SOAK)
-                        : List.of(FieldMove.CUT, FieldMove.ROCK_SMASH);
+                List<FieldMove> moves = tier >= 3
+                        ? List.of(FieldMove.CUT, FieldMove.ROCK_SMASH, FieldMove.DIG, FieldMove.BURN,
+                        FieldMove.HEADBUTT, FieldMove.SURF)
+                        : List.of(FieldMove.CUT, FieldMove.ROCK_SMASH, FieldMove.DIG);
                 target = moves.get(random.nextInt(moves.size())).id();
                 required = 1 + tier + random.nextInt(tier + 1);
                 effort = required * 10;

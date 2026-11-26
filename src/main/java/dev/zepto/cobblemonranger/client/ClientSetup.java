@@ -5,6 +5,7 @@ import dev.zepto.cobblemonranger.CobblemonRanger;
 import dev.zepto.cobblemonranger.item.StylerItem;
 import dev.zepto.cobblemonranger.registry.ModItems;
 import dev.zepto.cobblemonranger.registry.ModMenus;
+import dev.zepto.cobblemonranger.registry.ModParticles;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -19,6 +20,7 @@ import net.neoforged.neoforge.client.event.RegisterColorHandlersEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
+import net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 import org.lwjgl.glfw.GLFW;
 
@@ -31,6 +33,13 @@ public final class ClientSetup {
             InputConstants.Type.KEYSYM, InputConstants.UNKNOWN.getValue(), "key.categories.cobblemonranger");
 
     private ClientSetup() {
+    }
+
+    @SubscribeEvent
+    public static void registerParticles(RegisterParticleProvidersEvent event) {
+        for (var holder : ModParticles.FIELD_MOVES.values()) {
+            event.registerSpriteSet(holder.get(), FieldMoveParticle.Provider::new);
+        }
     }
 
     /** Styler models have a tinted shell (layer 0) and an untinted screen and buttons (layer 1). */

@@ -95,6 +95,14 @@ public final class FriendManager {
         return released;
     }
 
+    /** The Browser's "Release all friends" button. */
+    public static void releaseAllFromBrowser(ServerPlayer player) {
+        int released = releaseAll(player);
+        if (released == 0) {
+            player.displayClientMessage(Component.translatable("message.cobblemonranger.no_friends"), true);
+        }
+    }
+
     /** Removes a friend from the party and sends it home from where it was (or from next to the player). */
     public static boolean release(ServerPlayer player, Pokemon pokemon) {
         return release(player, pokemon, null, null);

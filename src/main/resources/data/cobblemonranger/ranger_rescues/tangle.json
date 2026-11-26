@@ -1,0 +1,34 @@
+{
+  "scenario": "tangle",
+  "pools": [
+    {
+      "biomes": [
+        "#minecraft:is_jungle"
+      ],
+      "species": [
+        "aipom",
+        "pikipek",
+        "grubbin",
+        "oddish",
+        "bounsweet",
+        "shroomish"
+      ]
+    },
+    {
+      "species": [
+        "oddish",
+        "bulbasaur",
+        "sewaddle",
+        "spinarak",
+        "caterpie",
+        "weedle",
+        "budew",
+        "petilil",
+        "bounsweet",
+        "skwovet",
+        "pineco",
+        "seedot"
+      ]
+    }
+  ]
+}

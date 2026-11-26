@@ -205,6 +205,9 @@ public final class MissionManager {
         if (tier >= 3) {
             types.add(Mission.Type.BATTLE);
         }
+        if (tier >= 2 && RangerConfig.RESCUE_EVENTS.get()) {
+            types.add(Mission.Type.RESCUE);
+        }
         Mission.Type type = types.get(random.nextInt(types.size()));
         String target = "";
         int required;
@@ -235,6 +238,11 @@ public final class MissionManager {
             case BATTLE -> {
                 required = tier / 2 + random.nextInt(2);
                 effort = required * 20;
+            }
+            case RESCUE -> {
+                // Rescue events come every 15 to 20 minutes, so these stay short.
+                required = tier >= 4 ? 2 : 1;
+                effort = required * 30;
             }
             default -> {
                 List<Item> items = DELIVERIES.get(tier - 1);
@@ -430,6 +438,10 @@ public final class MissionManager {
 
     public static void onAssist(ServerPlayer player) {
         progress(player, Mission.Type.ASSIST, "", 1);
+    }
+
+    public static void onRescue(ServerPlayer player) {
+        progress(player, Mission.Type.RESCUE, "", 1);
     }
 
     public static void onBattleWithFriends(ServerPlayer player) {

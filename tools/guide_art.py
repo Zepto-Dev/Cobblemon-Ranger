@@ -334,10 +334,29 @@ def page_signs():
     return img
 
 
+def page_rescues():
+    """A critter trapped behind rubble (the picked texture from tools/rescue_art.py) under the alert beam."""
+    img, d = canvas(rgb(0x8FD3F5))
+    ground(d, 42)
+    rubble = Image.open("src/main/resources/assets/cobblemonranger/textures/block/rescue_rubble.png").convert("RGBA")
+    for x, y in [(23, 26), (57, 26), (23, 10), (57, 10)]:
+        if y == 10 and x == 57:
+            continue
+        img.alpha_composite(rubble, (x, y))
+    critter(d, 48, 34)
+    for i, y in enumerate(range(4, 22, 5)):
+        sparkle(d, 48 + (1 if i % 2 else -1), y, ACCENT_LIGHT if i % 2 else WHITE, 1 + (i % 2))
+    # Rock Smash breaking the rubble on the right.
+    d.line([76, 18, 86, 28], fill=WHITE, width=2)
+    d.line([86, 18, 76, 28], fill=WHITE, width=2)
+    sparkle(d, 81, 23, GOLD, 3)
+    return img
+
+
 PAGES = {
     "styler": page_styler, "capturing": page_capturing, "browser": page_browser, "friends": page_friends,
     "assists": page_assists, "bosses": page_bosses, "partner": page_partner, "field_moves": page_field_moves,
-    "field_move_picker": page_field_move_picker, "missions": page_missions,
+    "field_move_picker": page_field_move_picker, "rescues": page_rescues, "missions": page_missions,
     "upgrades": page_upgrades, "signs": page_signs,
 }
 

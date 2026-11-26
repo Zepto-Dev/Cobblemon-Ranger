@@ -66,6 +66,22 @@ public final class FriendManager {
         pokemon.getPersistentData().remove(BATTLED_TAG);
     }
 
+    /** A Pokémon freed in a rescue event joins the party as a friend, the same way a capture does. */
+    public static boolean befriend(ServerPlayer player, PokemonEntity entity) {
+        Pokemon pokemon = entity.getPokemon();
+        PlayerPartyStore party = Cobblemon.INSTANCE.getStorage().getParty(player);
+        if (party.getFirstAvailablePosition() == null) {
+            return false;
+        }
+        markFriend(pokemon);
+        entity.discard();
+        if (!party.add(pokemon)) {
+            clearFriend(pokemon);
+            return false;
+        }
+        return true;
+    }
+
     public static List<Pokemon> getFriends(ServerPlayer player) {
         List<Pokemon> friends = new ArrayList<>();
         for (Pokemon pokemon : Cobblemon.INSTANCE.getStorage().getParty(player)) {

@@ -33,6 +33,10 @@ public final class ModAttachments {
     public static final Supplier<AttachmentType<BrowserData>> BROWSER = ATTACHMENTS.register("browser",
             () -> AttachmentType.builder(() -> BrowserData.EMPTY).serialize(BrowserData.CODEC).copyOnDeath().build());
 
+    /** Overworld game time of this player's next rescue event (0 = not scheduled yet). */
+    public static final Supplier<AttachmentType<Long>> NEXT_RESCUE = ATTACHMENTS.register("next_rescue",
+            () -> AttachmentType.builder(() -> 0L).serialize(Codec.LONG).copyOnDeath().build());
+
     private ModAttachments() {
     }
 }

@@ -1,0 +1,32 @@
+{
+  "scenario": "mobs",
+  "pools": [
+    {
+      "biomes": [
+        "#minecraft:is_nether"
+      ],
+      "species": [
+        "houndour",
+        "litwick",
+        "sandile",
+        "cubone"
+      ]
+    },
+    {
+      "species": [
+        "pikachu",
+        "eevee",
+        "bunnelby",
+        "buneary",
+        "sentret",
+        "togepi",
+        "skitty",
+        "lillipup",
+        "fletchling",
+        "minccino",
+        "yungoos",
+        "pichu"
+      ]
+    }
+  ]
+}

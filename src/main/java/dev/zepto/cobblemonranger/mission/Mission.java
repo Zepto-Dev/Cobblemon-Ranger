@@ -70,7 +70,8 @@ public record Mission(Type type, String target, int required, int progress, UUID
         FIELD_MOVE("field_move"),
         ASSIST("assist"),
         BATTLE("battle"),
-        DELIVER("deliver");
+        DELIVER("deliver"),
+        RESCUE("rescue");
 
         public static final Codec<Type> CODEC = StringRepresentable.fromEnum(Type::values);
 

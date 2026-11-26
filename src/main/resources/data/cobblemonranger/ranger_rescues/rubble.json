@@ -1,0 +1,30 @@
+{
+  "scenario": "rubble",
+  "pools": [
+    {
+      "biomes": [
+        "#minecraft:is_nether"
+      ],
+      "species": [
+        "numel",
+        "slugma",
+        "roggenrola",
+        "rolycoly"
+      ]
+    },
+    {
+      "species": [
+        "geodude",
+        "roggenrola",
+        "aron",
+        "larvitar",
+        "rolycoly",
+        "dwebble",
+        "cubone",
+        "sandshrew",
+        "nacli",
+        "diglett"
+      ]
+    }
+  ]
+}

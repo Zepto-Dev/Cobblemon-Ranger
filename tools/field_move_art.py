@@ -1044,7 +1044,7 @@ def previews(out):
 CHOSEN_ICONS = "D"
 CHOSEN_SILK = "C"
 CHOSEN_PARTICLES = "C"
-CHOSEN_ALTS = {"string_shot": "A", "decompose": "A"}  # round-2 letters; A = the first version
+CHOSEN_ALTS = {"string_shot": "D", "decompose": "E"}  # round-2 letters; A = the first version
 TEXTURES = "src/main/resources/assets/cobblemonranger/textures"
 
 

@@ -30,6 +30,7 @@ import net.neoforged.bus.api.IEventBus;
 import dev.zepto.cobblemonranger.browser.BrowserManager;
 import dev.zepto.cobblemonranger.rescue.RescueManager;
 import dev.zepto.cobblemonranger.rescue.RescueSpecies;
+import dev.zepto.cobblemonranger.ranger.ShutdownSafety;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -77,6 +78,7 @@ public final class CobblemonRanger {
         NeoForge.EVENT_BUS.register(RangerHq.class);
         NeoForge.EVENT_BUS.register(RescueManager.class);
         NeoForge.EVENT_BUS.register(RescueSpecies.class);
+        NeoForge.EVENT_BUS.register(ShutdownSafety.class);
         NeoForge.EVENT_BUS.addListener(RangerCommands::register);
     }
 

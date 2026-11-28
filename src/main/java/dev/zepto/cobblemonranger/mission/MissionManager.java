@@ -1,5 +1,7 @@
 package dev.zepto.cobblemonranger.mission;
 
+import dev.zepto.cobblemonranger.rescue.RescueManager;
+
 import dev.zepto.cobblemonranger.browser.BrowserManager;
 import dev.zepto.cobblemonranger.browser.GuidePage;
 import com.cobblemon.mod.common.api.types.ElementalType;
@@ -240,9 +242,9 @@ public final class MissionManager {
                 effort = required * 20;
             }
             case RESCUE -> {
-                // Rescue events come every 15 to 20 minutes, so these stay short.
-                required = tier >= 4 ? 2 : 1;
-                effort = required * 30;
+                // Rescue events are rare (about one an hour by default), so one is enough.
+                required = 1;
+                effort = 40;
             }
             default -> {
                 List<Item> items = DELIVERIES.get(tier - 1);
@@ -376,6 +378,9 @@ public final class MissionManager {
         RangerManager.update(player, data -> data.withMission(Optional.of(mission)));
         player.sendSystemMessage(Component.translatable("message.cobblemonranger.mission_accepted",
                 mission.description(), mission.giverName()).withStyle(ChatFormatting.GREEN));
+        if (mission.type() == Mission.Type.RESCUE) {
+            RescueManager.hurry(player);
+        }
         return true;
     }
 

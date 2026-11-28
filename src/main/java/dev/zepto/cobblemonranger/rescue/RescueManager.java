@@ -75,6 +75,7 @@ public final class RescueManager {
     private static final int MISSING_SECONDS = 5;
     private static final int SPOOK_RADIUS = 12;
     public static final int RANGER_POINTS_IF_FULL = 5;
+    private static final long MISSION_RESCUE_TICKS = 20L * 60 * 5;
 
     private RescueManager() {
     }
@@ -134,6 +135,18 @@ public final class RescueManager {
         int min = RangerConfig.current(RangerConfig.RESCUE_MIN_MINUTES);
         int max = Math.max(min, RangerConfig.current(RangerConfig.RESCUE_MAX_MINUTES));
         return (min * 60L + random.nextInt((max - min) * 60 + 1)) * 20L;
+    }
+
+    /**
+     * A rescue mission was accepted: the player's next rescue comes within {@link #MISSION_RESCUE_TICKS}, so the
+     * mission doesn't wait an hour on the normal timer.
+     */
+    public static void hurry(ServerPlayer player) {
+        long soon = RangerManager.now(player) + MISSION_RESCUE_TICKS;
+        long next = player.getData(ModAttachments.NEXT_RESCUE);
+        if (next == 0 || next > soon) {
+            player.setData(ModAttachments.NEXT_RESCUE, soon);
+        }
     }
 
     /**

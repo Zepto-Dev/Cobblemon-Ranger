@@ -63,11 +63,13 @@ public final class RangerConfig {
                         "ice, ringed by fire...), and freeing it with the right field move makes it a friend.")
                 .define("rescueEvents", true);
         RESCUE_MIN_MINUTES = builder
-                .comment("Shortest real-time wait, in minutes, between one player's rescue events.")
-                .defineInRange("rescueMinMinutes", 15, 1, 24 * 60);
+                .comment("Shortest real-time wait, in minutes, between one player's rescue events. Each wait is a random",
+                        "time between rescueMinMinutes and rescueMaxMinutes. The defaults make rescues a rare surprise:",
+                        "about one per hour of play (20 minutes is one Minecraft day).")
+                .defineInRange("rescueMinMinutes", 45, 1, 24 * 60);
         RESCUE_MAX_MINUTES = builder
                 .comment("Longest real-time wait, in minutes, between one player's rescue events.")
-                .defineInRange("rescueMaxMinutes", 20, 1, 24 * 60);
+                .defineInRange("rescueMaxMinutes", 75, 1, 24 * 60);
         RESCUE_ESCAPE_MINUTES = builder
                 .comment("Minutes before a trapped Pok\u00e9mon frees itself and the trap disappears.")
                 .defineInRange("rescueEscapeMinutes", 5, 1, 60);

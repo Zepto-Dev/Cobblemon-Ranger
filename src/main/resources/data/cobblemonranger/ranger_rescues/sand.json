@@ -1,0 +1,32 @@
+{
+  "scenario": "sand",
+  "pools": [
+    {
+      "biomes": [
+        "#minecraft:is_beach"
+      ],
+      "species": [
+        "krabby",
+        "shellos",
+        "corphish",
+        "staryu",
+        "wiglett",
+        "sandygast",
+        "binacle"
+      ]
+    },
+    {
+      "species": [
+        "sandshrew",
+        "trapinch",
+        "sandile",
+        "diglett",
+        "hippopotas",
+        "silicobra",
+        "phanpy",
+        "cacnea",
+        "helioptile"
+      ]
+    }
+  ]
+}

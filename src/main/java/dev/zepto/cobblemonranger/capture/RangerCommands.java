@@ -2,19 +2,24 @@ package dev.zepto.cobblemonranger.capture;
 
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.zepto.cobblemonranger.mission.MissionManager;
+import dev.zepto.cobblemonranger.rescue.RescueManager;
+import dev.zepto.cobblemonranger.rescue.RescueScenario;
 import dev.zepto.cobblemonranger.ranger.RangerData;
 import dev.zepto.cobblemonranger.ranger.RangerManager;
 import dev.zepto.cobblemonranger.signs.RangerSign;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
@@ -41,6 +46,13 @@ public final class RangerCommands {
                                 .executes(c -> setRank(c, List.of(player(c))))
                                 .then(Commands.argument("targets", EntityArgument.players())
                                         .executes(c -> setRank(c, EntityArgument.getPlayers(c, "targets"))))))
+                .then(Commands.literal("rescue").requires(source -> source.hasPermission(2))
+                        .executes(c -> startRescue(c, null))
+                        .then(Commands.argument("scenario", StringArgumentType.word())
+                                .suggests((c, b) -> SharedSuggestionProvider.suggest(
+                                        Arrays.stream(RescueScenario.values()).map(RescueScenario::id), b))
+                                .executes(c -> startRescue(c,
+                                        RescueScenario.byId(StringArgumentType.getString(c, "scenario"))))))
                 .then(Commands.literal("mission").executes(RangerCommands::showMission)
                         .then(Commands.literal("accept").executes(c -> MissionManager.accept(player(c)) ? 1 : 0))
                         .then(Commands.literal("decline").executes(c -> {
@@ -48,6 +60,17 @@ public final class RangerCommands {
                             return 1;
                         }))
                         .then(Commands.literal("abandon").executes(RangerCommands::abandonMission))));
+    }
+
+    /** For testing: traps a Pokémon near the player right away. */
+    private static int startRescue(CommandContext<CommandSourceStack> context, RescueScenario scenario)
+            throws CommandSyntaxException {
+        String error = RescueManager.start(player(context), scenario, true);
+        if (error != null) {
+            context.getSource().sendFailure(Component.translatable(error));
+            return 0;
+        }
+        return 1;
     }
 
     private static ServerPlayer player(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {

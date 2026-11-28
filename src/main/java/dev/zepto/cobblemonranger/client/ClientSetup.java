@@ -40,6 +40,7 @@ public final class ClientSetup {
         for (var holder : ModParticles.FIELD_MOVES.values()) {
             event.registerSpriteSet(holder.get(), FieldMoveParticle.Provider::new);
         }
+        event.registerSpriteSet(ModParticles.RESCUE_BEAM.get(), FieldMoveParticle.BeamProvider::new);
     }
 
     /** Styler models have a tinted shell (layer 0) and an untinted screen and buttons (layer 1). */

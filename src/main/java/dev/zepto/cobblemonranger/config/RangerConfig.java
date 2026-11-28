@@ -14,6 +14,10 @@ public final class RangerConfig {
     public static final ModConfigSpec.IntValue HQ_CHARGE_COOLDOWN_MINUTES;
     public static final ModConfigSpec.IntValue STYLER_RECHARGE_SECONDS;
     public static final ModConfigSpec.BooleanValue BOSS_CAPTURES;
+    public static final ModConfigSpec.BooleanValue RESCUE_EVENTS;
+    public static final ModConfigSpec.IntValue RESCUE_MIN_MINUTES;
+    public static final ModConfigSpec.IntValue RESCUE_MAX_MINUTES;
+    public static final ModConfigSpec.IntValue RESCUE_ESCAPE_MINUTES;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -53,6 +57,23 @@ public final class RangerConfig {
                 .comment("Alphas and legendaries fight back in stages during a styler capture (2 stages for Alphas, 3",
                         "for legendaries, with each legendary's own attacks). Off makes them normal captures.")
                 .define("bossCaptures", true);
+        builder.push("rescues");
+        RESCUE_EVENTS = builder
+                .comment("Now and then a wild Pok\u00e9mon near a player carrying a styler gets trapped (under rubble, in",
+                        "ice, ringed by fire...), and freeing it with the right field move makes it a friend.")
+                .define("rescueEvents", true);
+        RESCUE_MIN_MINUTES = builder
+                .comment("Shortest real-time wait, in minutes, between one player's rescue events. Each wait is a random",
+                        "time between rescueMinMinutes and rescueMaxMinutes. The defaults make rescues a rare surprise:",
+                        "about one per hour of play (20 minutes is one Minecraft day).")
+                .defineInRange("rescueMinMinutes", 45, 1, 24 * 60);
+        RESCUE_MAX_MINUTES = builder
+                .comment("Longest real-time wait, in minutes, between one player's rescue events.")
+                .defineInRange("rescueMaxMinutes", 75, 1, 24 * 60);
+        RESCUE_ESCAPE_MINUTES = builder
+                .comment("Minutes before a trapped Pok\u00e9mon frees itself and the trap disappears.")
+                .defineInRange("rescueEscapeMinutes", 5, 1, 60);
+        builder.pop();
         SPEC = builder.build();
     }
 

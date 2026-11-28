@@ -1,5 +1,7 @@
 package dev.zepto.cobblemonranger.client;
 
+import dev.zepto.cobblemonranger.rescue.RescueManager;
+
 import com.cobblemon.mod.common.api.pokemon.PokemonSpecies;
 import com.cobblemon.mod.common.api.types.ElementalType;
 import com.cobblemon.mod.common.pokemon.Species;
@@ -462,6 +464,9 @@ public class RangerBrowserScreen extends Screen {
                     RangerConfig.current(RangerConfig.PARTNER_FIELD_MOVE_COOLDOWN_SECONDS)};
             case FIELD_MOVES -> new Object[]{FieldMoveManager.TELEKINESIS_RANGE};
             case FIELD_MOVE_PICKER -> new Object[]{FieldMoveManager.MAX_CHARMED};
+            case RESCUES -> new Object[]{RangerConfig.current(RangerConfig.RESCUE_MIN_MINUTES),
+                    RangerConfig.current(RangerConfig.RESCUE_MAX_MINUTES),
+                    RangerConfig.current(RangerConfig.RESCUE_ESCAPE_MINUTES), RescueManager.RANGER_POINTS_IF_FULL};
             case MISSIONS -> new Object[]{RangerConfig.current(RangerConfig.MISSION_COOLDOWN_MINUTES)};
             case SIGNS -> new Object[]{RangerConfig.current(RangerConfig.WORLD_SIGN_PERSONAL_COOLDOWN_MINUTES),
                     RangerConfig.current(RangerConfig.WORLD_SIGN_SHARED_COOLDOWN_MINUTES)};

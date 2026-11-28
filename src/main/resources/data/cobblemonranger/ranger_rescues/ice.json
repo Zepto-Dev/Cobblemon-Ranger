@@ -1,0 +1,20 @@
+{
+  "scenario": "ice",
+  "pools": [
+    {
+      "species": [
+        "snorunt",
+        "spheal",
+        "swinub",
+        "snover",
+        "cubchoo",
+        "vanillite",
+        "snom",
+        "sneasel",
+        "eevee",
+        "piplup",
+        "bergmite"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "scenario": "fire",
+  "pools": [
+    {
+      "biomes": [
+        "#minecraft:is_nether"
+      ],
+      "species": [
+        "shuckle",
+        "durant",
+        "trubbish",
+        "larvitar"
+      ]
+    },
+    {
+      "species": [
+        "eevee",
+        "pichu",
+        "pikachu",
+        "rattata",
+        "zigzagoon",
+        "bunnelby",
+        "skwovet",
+        "wooloo",
+        "teddiursa",
+        "sentret",
+        "bulbasaur",
+        "ralts"
+      ]
+    }
+  ]
+}

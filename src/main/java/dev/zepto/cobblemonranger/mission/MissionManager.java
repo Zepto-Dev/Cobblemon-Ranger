@@ -1,5 +1,7 @@
 package dev.zepto.cobblemonranger.mission;
 
+import dev.zepto.cobblemonranger.rescue.RescueManager;
+
 import dev.zepto.cobblemonranger.browser.BrowserManager;
 import dev.zepto.cobblemonranger.browser.GuidePage;
 import com.cobblemon.mod.common.api.types.ElementalType;
@@ -205,6 +207,9 @@ public final class MissionManager {
         if (tier >= 3) {
             types.add(Mission.Type.BATTLE);
         }
+        if (tier >= 2 && RangerConfig.RESCUE_EVENTS.get()) {
+            types.add(Mission.Type.RESCUE);
+        }
         Mission.Type type = types.get(random.nextInt(types.size()));
         String target = "";
         int required;
@@ -235,6 +240,11 @@ public final class MissionManager {
             case BATTLE -> {
                 required = tier / 2 + random.nextInt(2);
                 effort = required * 20;
+            }
+            case RESCUE -> {
+                // Rescue events are rare (about one an hour by default), so one is enough.
+                required = 1;
+                effort = 40;
             }
             default -> {
                 List<Item> items = DELIVERIES.get(tier - 1);
@@ -368,6 +378,9 @@ public final class MissionManager {
         RangerManager.update(player, data -> data.withMission(Optional.of(mission)));
         player.sendSystemMessage(Component.translatable("message.cobblemonranger.mission_accepted",
                 mission.description(), mission.giverName()).withStyle(ChatFormatting.GREEN));
+        if (mission.type() == Mission.Type.RESCUE) {
+            RescueManager.hurry(player);
+        }
         return true;
     }
 
@@ -430,6 +443,10 @@ public final class MissionManager {
 
     public static void onAssist(ServerPlayer player) {
         progress(player, Mission.Type.ASSIST, "", 1);
+    }
+
+    public static void onRescue(ServerPlayer player) {
+        progress(player, Mission.Type.RESCUE, "", 1);
     }
 
     public static void onBattleWithFriends(ServerPlayer player) {

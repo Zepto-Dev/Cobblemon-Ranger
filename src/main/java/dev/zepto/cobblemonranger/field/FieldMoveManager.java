@@ -1,5 +1,8 @@
 package dev.zepto.cobblemonranger.field;
 
+import dev.zepto.cobblemonranger.rescue.RescueBlock;
+import dev.zepto.cobblemonranger.rescue.RescueManager;
+
 import com.cobblemon.mod.common.Cobblemon;
 import com.cobblemon.mod.common.CobblemonEntities;
 import com.cobblemon.mod.common.api.pokemon.PokemonProperties;
@@ -144,6 +147,9 @@ public final class FieldMoveManager {
     public static List<FieldMove> candidatesFor(Level level, BlockPos pos) {
         List<FieldMove> moves = new ArrayList<>();
         BlockState state = level.getBlockState(pos);
+        if (state.getBlock() instanceof RescueBlock trap) {
+            return List.of(trap.move());
+        }
         FluidState fluid = state.getFluidState();
         if (hasFireNear(level, pos, 2)) {
             moves.add(FieldMove.SURF);
@@ -387,7 +393,8 @@ public final class FieldMoveManager {
             return;
         }
         ServerLevel level = player.serverLevel();
-        int done = switch (move) {
+        int done = level.getBlockState(pos).getBlock() instanceof RescueBlock && move.targeted()
+                ? RescueManager.freeAt(level, player, pos, move) : switch (move) {
             case HEADBUTT -> headbutt(level, player, pos);
             case BURN -> burn(level, player, pos);
             case SURF -> hasFireNear(level, pos, 2) ? douse(level, player, pos) : surf(player);
@@ -409,8 +416,10 @@ public final class FieldMoveManager {
             case CHARM -> charm(level, player);
         };
         if (done <= 0) {
-            player.displayClientMessage(Component.translatable("message.cobblemonranger.field_move_nothing_" + move.id()),
-                    true);
+            if (done == 0) {
+                player.displayClientMessage(Component.translatable(
+                        "message.cobblemonranger.field_move_nothing_" + move.id()), true);
+            }
             return;
         }
         PICKED.remove(player.getUUID());
@@ -1039,6 +1048,7 @@ public final class FieldMoveManager {
                     4, 0.3, 0.2, 0.3, 0.01);
             done++;
         }
+        done += RescueManager.onSpook(level, player);
         if (done > 0) {
             sound(level, player.blockPosition(), SoundEvents.PHANTOM_AMBIENT, 1.4f);
         }

@@ -45,6 +45,25 @@ public class FieldMoveParticle extends TextureSheetParticle {
         return ParticleRenderType.PARTICLE_SHEET_TRANSLUCENT;
     }
 
+    /** The rescue alert beam: bigger and slower, so it can be seen from 40 blocks away. */
+    public static class BeamProvider implements ParticleProvider<SimpleParticleType> {
+        private final SpriteSet sprites;
+
+        public BeamProvider(SpriteSet sprites) {
+            this.sprites = sprites;
+        }
+
+        @Override
+        public Particle createParticle(SimpleParticleType type, ClientLevel level, double x, double y, double z,
+                                       double dx, double dy, double dz) {
+            FieldMoveParticle particle = new FieldMoveParticle(level, x, y, z, dx, dy, dz, sprites);
+            particle.quadSize = 0.35f + particle.random.nextFloat() * 0.15f;
+            particle.lifetime = 24 + particle.random.nextInt(12);
+            particle.yd = 0.04;
+            return particle;
+        }
+    }
+
     public static class Provider implements ParticleProvider<SimpleParticleType> {
         private final SpriteSet sprites;
 

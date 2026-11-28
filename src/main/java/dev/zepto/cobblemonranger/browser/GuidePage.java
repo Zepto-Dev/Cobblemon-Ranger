@@ -16,6 +16,7 @@ public enum GuidePage {
     PARTNER("partner", false),
     FIELD_MOVES("field_moves", false),
     FIELD_MOVE_PICKER("field_move_picker", false),
+    RESCUES("rescues", false),
     MISSIONS("missions", false),
     UPGRADES("upgrades", false),
     SIGNS("signs", false);

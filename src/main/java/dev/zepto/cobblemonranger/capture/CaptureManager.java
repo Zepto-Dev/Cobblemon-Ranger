@@ -1,5 +1,7 @@
 package dev.zepto.cobblemonranger.capture;
 
+import dev.zepto.cobblemonranger.rescue.RescueManager;
+
 import com.cobblemon.mod.common.Cobblemon;
 import com.cobblemon.mod.common.api.Priority;
 import com.cobblemon.mod.common.api.battles.model.actor.BattleActor;
@@ -162,6 +164,10 @@ public final class CaptureManager {
     private static void interact(ServerPlayer player, PokemonEntity entity, ItemStack styler, InteractionHand hand) {
         Pokemon pokemon = entity.getPokemon();
         if (SignManager.isHelper(entity)) {
+            return;
+        }
+        if (RescueManager.isTrapped(entity)) {
+            RescueManager.explainTrapped(player, entity);
             return;
         }
         boolean own = player.getUUID().equals(pokemon.getOwnerUUID());

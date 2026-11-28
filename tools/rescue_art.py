@@ -645,7 +645,7 @@ def previews(out):
 
 
 # Dylan's picks (letters from the option sheets).
-CHOSEN = {"rubble": "A", "tangle": "A", "fire": "A", "ice": "A", "sand": "A", "beam": "B"}
+CHOSEN = {"rubble": "A", "tangle": "A", "fire": "A", "ice": "A", "sand": "B", "beam": "B"}
 TEXTURES = "src/main/resources/assets/cobblemonranger/textures"
 
 
